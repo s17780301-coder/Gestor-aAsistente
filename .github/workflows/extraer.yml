@@ -1,0 +1,32 @@
+name: Extraer proyecto
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extraer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Extraer proyecto
+        run: |
+          mkdir -p /tmp/proyecto
+          unzip -o GestoriaAsistente_V1.0_base.zip -d /tmp/proyecto
+
+          find /tmp/proyecto -mindepth 1 -maxdepth 1 -exec cp -r {} . \;
+
+          rm -f GestoriaAsistente_V1.0_base.zip
+
+      - name: Guardar proyecto
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "Extraer proyecto Android" || echo "No hay cambios"
+          git push
