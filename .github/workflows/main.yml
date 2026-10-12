@@ -1,3 +1,4 @@
+
 name: Compilar Gestoria Asistente
 
 on:
@@ -6,26 +7,39 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Descargar archivos
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar Java
-        uses: actions/setup-java@v4
+      - name: Preparar Java
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Compilar APK
+      - name: Preparar Gradle actualizado
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Instalar herramientas
+        run: sudo apt-get update && sudo apt-get install -y unzip
+
+      - name: Descomprimir y compilar
         run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip gradle
-          ZIP=$(find . -maxdepth 1 -name '*.zip' | head -n 1)
-          if [ -z "$ZIP" ]; then echo "No se encontro el ZIP"; exit 1; fi
+          ZIP=$(find . -maxdepth 3 -type f -iname "*.zip" | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: No se encontro el ZIP"
+            exit 1
+          fi
           mkdir proyecto
           unzip -q "$ZIP" -d proyecto
-          DIR=$(find proyecto -name settings.gradle -o -name settings.gradle.kts | head -n 1)
-          if [ -z "$DIR" ]; then echo "No se encontro settings.gradle"; exit 1; fi
+          DIR=$(find proyecto -type f -name settings.gradle | head -n 1)
+          if [ -z "$DIR" ]; then
+            echo "ERROR: No se encontro settings.gradle"
+            exit 1
+          fi
           cd "$(dirname "$DIR")"
           gradle --no-daemon assembleDebug
 
@@ -34,4 +48,5 @@ jobs:
         with:
           name: GestoriaAsistente-APK
           path: proyecto/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
           
