@@ -1,40 +1,40 @@
-
-name: Generar APK Gestoria Asistente
+name: Compilar Gestoria Asistente
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: read
+workflow_dispatch:
+push:
+paths:
+- 'GestoriaAsistente_v1.0_CORREGIDO.zip'
+- '.github/workflows/main.yml'
 
 jobs:
-  generar-apk:
-    name: Compilar aplicacion Android
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
+steps:
+- name: Descargar archivos
+uses: actions/checkout@v4
 
-    steps:
-      - name: Descargar el proyecto
-        uses: actions/checkout@v4
+  - name: Configurar Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: '17'
 
-      - name: Instalar Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+  - name: Configurar Gradle
+    uses: gradle/actions/setup-gradle@v4
+    with:
+      gradle-version: '8.9'
 
-      - name: Preparar Gradle
-        uses: gradle/actions/setup-gradle@v4
+  - name: Extraer proyecto
+    run: |
+      unzip -q GestoriaAsistente_v1.0_CORREGIDO.zip -d proyecto
+      test -f proyecto/settings.gradle
 
-      - name: Dar permisos a Gradle
-        run: chmod +x gradlew
+  - name: Compilar APK
+    run: gradle -p proyecto --no-daemon assembleDebug
 
-      - name: Compilar APK
-        run: ./gradlew assembleDebug
-
-      - name: Guardar APK para descargar
-        uses: actions/upload-artifact@v4
-        with:
-          nam
+  - name: Guardar APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: GestoriaAsistente-APK
+      path: proyecto/app/build/outputs/apk/debug/app-debug.apk
