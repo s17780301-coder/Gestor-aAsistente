@@ -1,32 +1,42 @@
-name: Extraer proyecto
+name: Compilar Gestoria Asistente
 
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  extraer:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Extraer proyecto
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Preparar proyecto
         run: |
-          mkdir -p /tmp/proyecto
-          unzip -o GestoriaAsistente_V1.0_base.zip -d /tmp/proyecto
+          ZIP=$(find . -maxdepth 1 -name '*.zip' | head -n 1)
+          test -n "$ZIP"
+          mkdir proyecto
+          unzip -q "$ZIP" -d proyecto
+          find proyecto -name settings.gradle -o -name settings.gradle.kts
 
-          find /tmp/proyecto -mindepth 1 -maxdepth 1 -exec cp -r {} . \;
-
-          rm -f GestoriaAsistente_V1.0_base.zip
-
-      - name: Guardar proyecto
+      - name: Compilar APK
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add .
-          git commit -m "Extraer proyecto Android" || echo "No hay cambios"
-          git push
+          DIR=$(find proyecto -name settings.gradle -o -name settings.gradle.kts | head -n 1)
+          test -n "$DIR"
+          gradle -p "$(dirname "$DIR")" --no-daemon assembleDebug
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GestoriaAsistente-APK
+          path: proyecto/**/build/outputs/apk/debug/*.apk
