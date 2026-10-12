@@ -1,7 +1,36 @@
-name: Test
-on: workflow_dispatch
+name: Compilar Gestoria Asistente
+
+on:
+  workflow_dispatch:
+
 jobs:
-test:
-runs-on: ubuntu-latest
-steps:
-- run: echo OK
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar archivos
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Compilar APK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip gradle
+          ZIP=$(find . -maxdepth 1 -name '*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then echo "No se encontro el ZIP"; exit 1; fi
+          mkdir proyecto
+          unzip -q "$ZIP" -d proyecto
+          DIR=$(find proyecto -name settings.gradle -o -name settings.gradle.kts | head -n 1)
+          if [ -z "$DIR" ]; then echo "No se encontro settings.gradle"; exit 1; fi
+          cd "$(dirname "$DIR")"
+          gradle --no-daemon assembleDebug
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GestoriaAsistente-APK
+          path: proyecto/**/build/outputs/apk/debug/*.apk
