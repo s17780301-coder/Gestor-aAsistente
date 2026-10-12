@@ -2,10 +2,6 @@ name: Compilar Gestoria Asistente
 
 on:
 workflow_dispatch:
-push:
-paths:
-- 'GestoriaAsistente_v1.0_CORREGIDO.zip'
-- '.github/workflows/main.yml'
 
 jobs:
 build:
