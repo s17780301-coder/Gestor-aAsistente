@@ -1,3 +1,11 @@
 name: Prueba
-on: workflow_dispatch
-jobs: {}
+
+on:
+workflow_dispatch:
+
+jobs:
+prueba:
+runs-on: ubuntu-latest
+steps:
+- name: Verificar
+run: echo "El flujo funciona"
