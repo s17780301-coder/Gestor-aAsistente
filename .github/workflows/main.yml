@@ -11,7 +11,6 @@ permissions:
 jobs:
   build-todas:
     runs-on: ubuntu-latest
-
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -21,6 +20,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Preparar Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -31,25 +31,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          # Nombre actual del ZIP corregido. Se conserva el nombre anterior como alternativa.
           ZIP=""
           for CANDIDATO in \
+            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_LOGO_ORIGINAL_RESTAURADO.zip" \
+            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_CODIGO_CORREGIDO_LOGO.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_5_CORREGIDO_COBRANZA_RECIBOS.zip" \
+            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_CORREGIDO_COBRANZA_RECIBOS(1).zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_5_COBRANZA_Y_RECIBOS_RECIBO_CIRCULAR.zip"; do
-            if [ -f "$CANDIDATO" ]; then
-              ZIP="$CANDIDATO"
-              break
-            fi
+            if [ -f "$CANDIDATO" ]; then ZIP="$CANDIDATO"; break; fi
           done
-
+          if [ -z "$ZIP" ]; then
+            ZIP="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname 'DENTAL_JG_10_5*.zip' -print -quit)"
+          fi
           if [ -z "$ZIP" ]; then
             echo "::error::No se encontró el ZIP DENTAL JG 10.5 en la raíz del repositorio."
-            echo "Archivos ZIP disponibles en la raíz:"
-            find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname '*.zip' -printf '%f\\n' || true
+            echo "ZIP disponibles en la raíz:"
+            find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname '*.zip' -printf '%f\n' || true
             exit 1
           fi
-
           FUENTES="$RUNNER_TEMP/dental_jg_10_5"
           mkdir -p "$FUENTES"
           echo "ZIP seleccionado: $ZIP"
@@ -65,35 +64,22 @@ jobs:
           set -euo pipefail
           BASE="$PROYECTO_FUENTES"
           ROOT=""
-
           while IFS= read -r SETTINGS; do
             DIR="$(dirname "$SETTINGS")"
             TIENE_TRES=true
             for MODULO in gestor-app panel-apk cobranza-app; do
               if [ ! -f "$DIR/$MODULO/build.gradle" ] && [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; then
-                TIENE_TRES=false
-                break
+                TIENE_TRES=false; break
               fi
             done
-            if [ "$TIENE_TRES" = true ]; then
-              ROOT="$DIR"
-              break
-            fi
-          done < <(
-            find "$BASE" -type d \( -name .git -o -name build \) -prune -o \
-              -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print
-          )
-
+            if [ "$TIENE_TRES" = true ]; then ROOT="$DIR"; break; fi
+          done < <(find "$BASE" -type d \( -name .git -o -name build \) -prune -o -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
           if [ -z "$ROOT" ]; then
             echo "::error::El ZIP no contiene un proyecto Gradle con los tres módulos requeridos."
-            echo "Directorios principales encontrados:"
-            find "$BASE" -maxdepth 4 -type d -print | head -200
             echo "Archivos Gradle encontrados:"
-            find "$BASE" -type f \( -name settings.gradle -o -name settings.gradle.kts -o -name build.gradle -o -name build.gradle.kts \) \
-              -not -path '*/build/*' -print | head -200
+            find "$BASE" -type f \( -name settings.gradle -o -name settings.gradle.kts -o -name build.gradle -o -name build.gradle.kts \) -not -path '*/build/*' -print | head -200
             exit 1
           fi
-
           echo "Proyecto seleccionado: $ROOT"
           echo "PROYECTO_DIR=$ROOT" >> "$GITHUB_ENV"
 
@@ -103,16 +89,8 @@ jobs:
           set -euo pipefail
           ARCHIVO="$PROYECTO_DIR/gradle.properties"
           touch "$ARCHIVO"
-          if grep -q '^android.useAndroidX=' "$ARCHIVO"; then
-            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' "$ARCHIVO"
-          else
-            echo 'android.useAndroidX=true' >> "$ARCHIVO"
-          fi
-          if grep -q '^android.enableJetifier=' "$ARCHIVO"; then
-            sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' "$ARCHIVO"
-          else
-            echo 'android.enableJetifier=true' >> "$ARCHIVO"
-          fi
+          if grep -q '^android.useAndroidX=' "$ARCHIVO"; then sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' "$ARCHIVO"; else echo 'android.useAndroidX=true' >> "$ARCHIVO"; fi
+          if grep -q '^android.enableJetifier=' "$ARCHIVO"; then sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' "$ARCHIVO"; else echo 'android.enableJetifier=true' >> "$ARCHIVO"; fi
 
       - name: Verificar proyecto y versiones
         shell: bash
@@ -122,14 +100,8 @@ jobs:
           gradle --version
           test -f "$PROYECTO_DIR/settings.gradle" -o -f "$PROYECTO_DIR/settings.gradle.kts"
           for MODULO in gestor-app panel-apk cobranza-app; do
-            if [ ! -f "$PROYECTO_DIR/$MODULO/src/main/AndroidManifest.xml" ]; then
-              echo "::error::Falta AndroidManifest.xml en $MODULO."
-              exit 1
-            fi
-            if [ ! -f "$PROYECTO_DIR/$MODULO/build.gradle" ] && [ ! -f "$PROYECTO_DIR/$MODULO/build.gradle.kts" ]; then
-              echo "::error::Falta el archivo Gradle del módulo $MODULO."
-              exit 1
-            fi
+            if [ ! -f "$PROYECTO_DIR/$MODULO/src/main/AndroidManifest.xml" ]; then echo "::error::Falta AndroidManifest.xml en $MODULO."; exit 1; fi
+            if [ ! -f "$PROYECTO_DIR/$MODULO/build.gradle" ] && [ ! -f "$PROYECTO_DIR/$MODULO/build.gradle.kts" ]; then echo "::error::Falta el archivo Gradle del módulo $MODULO."; exit 1; fi
           done
           echo "Los tres módulos están presentes."
 
@@ -138,13 +110,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/apk_final"
-
           for MODULO in gestor-app panel-apk cobranza-app; do
             echo "======================================"
             echo "Compilando: $MODULO"
             echo "======================================"
             gradle --no-daemon -p "$PROYECTO_DIR" ":$MODULO:assembleDebug"
-
             CARPETA="$PROYECTO_DIR/$MODULO/build/outputs/apk"
             APK="$(find "$CARPETA" -type f -name '*.apk' -path '*/debug/*' -print -quit 2>/dev/null || true)"
             if [ -z "$APK" ] || [ ! -f "$APK" ]; then
@@ -152,7 +122,6 @@ jobs:
               find "$PROYECTO_DIR/$MODULO/build/outputs" -maxdepth 5 -type f -print 2>/dev/null || true
               exit 1
             fi
-
             case "$MODULO" in
               gestor-app) NOMBRE="DENTAL-JG-Gestor.apk" ;;
               panel-apk) NOMBRE="DENTAL-JG-Panel-Administrativo.apk" ;;
