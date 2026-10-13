@@ -1,5 +1,5 @@
 
-name: Compilar DENTAL JG Cobranza
+name: Compilar DENTAL JG - Todas las aplicaciones
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build-cobranza:
+  build-todas:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Preparar Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -28,117 +28,133 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Encontrar proyecto Android
+      - name: Encontrar el proyecto con las tres aplicaciones
         shell: bash
         run: |
           set -euo pipefail
 
-          PROYECTO=""
-          MODULO=""
+          FUENTES="$RUNNER_TEMP/dental_jg_fuentes"
+          mkdir -p "$FUENTES"
 
-          buscar_proyecto() {
-            local BASE="$1"
-            local SETTINGS DIR
+          # Extraer los ZIP disponibles en el repositorio.
+          while IFS= read -r ZIP; do
+            NOMBRE="$(basename "$ZIP" .zip)"
+            DESTINO="$FUENTES/$NOMBRE"
+            mkdir -p "$DESTINO"
+            echo "Revisando ZIP: $ZIP"
+            unzip -oq "$ZIP" -d "$DESTINO"
+          done < <(
+            find . -type f -iname '*.zip' \
+              ! -path '*/.git/*' \
+              ! -path '*/build/*'
+          )
 
+          ROOT=""
+          BUSCAR_EN=("$GITHUB_WORKSPACE" "$FUENTES")
+
+          # Buscar primero un proyecto que contenga los tres módulos.
+          for BASE in "${BUSCAR_EN[@]}"; do
             while IFS= read -r SETTINGS; do
               DIR="$(dirname "$SETTINGS")"
 
-              if grep -Eq "include.*['\"]:app['\"]" "$SETTINGS" &&
-                 { [ -f "$DIR/app/build.gradle" ] ||
-                   [ -f "$DIR/app/build.gradle.kts" ]; }; then
-                PROYECTO="$DIR"
-                MODULO="app"
-                return 0
-              fi
+              TIENE_TRES=true
+              for MODULO in gestor-app panel-apk cobranza-app; do
+                if [ ! -f "$DIR/$MODULO/build.gradle" ] &&
+                   [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; then
+                  TIENE_TRES=false
+                  break
+                fi
+              done
 
-              if grep -Eq "include.*['\"]:cobranza-app['\"]" "$SETTINGS" &&
-                 { [ -f "$DIR/cobranza-app/build.gradle" ] ||
-                   [ -f "$DIR/cobranza-app/build.gradle.kts" ]; }; then
-                PROYECTO="$DIR"
-                MODULO="cobranza-app"
-                return 0
+              if [ "$TIENE_TRES" = true ]; then
+                ROOT="$DIR"
+                break 2
               fi
             done < <(
               find "$BASE" \
                 -type d \( -name .git -o -name build \) -prune -o \
                 -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print
             )
-          }
+          done
 
-          buscar_proyecto "." || true
-
-          if [ -z "$PROYECTO" ]; then
-            while IFS= read -r ZIP; do
-              TEMP="$RUNNER_TEMP/cobranza_extraida"
-              rm -rf "$TEMP"
-              mkdir -p "$TEMP"
-
-              if unzip -q "$ZIP" -d "$TEMP"; then
-                buscar_proyecto "$TEMP" || true
-              fi
-
-              if [ -n "$PROYECTO" ]; then
-                break
-              fi
-            done < <(find . -type f -iname "*.zip" ! -path "*/.git/*")
-          fi
-
-          if [ -z "$PROYECTO" ]; then
-            echo "ERROR: No se encontró el proyecto Android."
-            echo "Sube el contenido del proyecto o su ZIP al repositorio."
+          if [ -z "$ROOT" ]; then
+            echo "ERROR: No encontré un proyecto que contenga los tres módulos:"
+            echo "gestor-app, panel-apk y cobranza-app."
+            echo "Comprueba que el ZIP del proyecto integrado esté en el repositorio."
             exit 1
           fi
 
-          echo "Proyecto: $PROYECTO"
-          echo "Módulo: $MODULO"
-          echo "PROYECTO_DIR=$PROYECTO" >> "$GITHUB_ENV"
-          echo "MODULO=$MODULO" >> "$GITHUB_ENV"
+          echo "Proyecto encontrado: $ROOT"
+          echo "PROYECTO_DIR=$ROOT" >> "$GITHUB_ENV"
 
       - name: Activar AndroidX
         shell: bash
         run: |
           set -euo pipefail
+
           ARCHIVO="$PROYECTO_DIR/gradle.properties"
           touch "$ARCHIVO"
 
-          grep -q '^android.useAndroidX=' "$ARCHIVO" \
-            && sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' "$ARCHIVO" \
-            || echo 'android.useAndroidX=true' >> "$ARCHIVO"
+          if grep -q '^android.useAndroidX=' "$ARCHIVO"; then
+            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' "$ARCHIVO"
+          else
+            echo 'android.useAndroidX=true' >> "$ARCHIVO"
+          fi
 
-          grep -q '^android.enableJetifier=' "$ARCHIVO" \
-            || echo 'android.enableJetifier=true' >> "$ARCHIVO"
+          if grep -q '^android.enableJetifier=' "$ARCHIVO"; then
+            sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' "$ARCHIVO"
+          else
+            echo 'android.enableJetifier=true' >> "$ARCHIVO"
+          fi
 
-      - name: Compilar APK
+      - name: Compilar Gestor, Panel y Cobranza
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon \
-            -p "$PROYECTO_DIR" \
-            ":$MODULO:assembleDebug"
-
-      - name: Preparar APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          APK="$PROYECTO_DIR/$MODULO/build/outputs/apk/debug/$MODULO-debug.apk"
-
-          if [ ! -f "$APK" ]; then
-            APK="$(find "$PROYECTO_DIR/$MODULO/build/outputs/apk" \
-              -type f -name '*.apk' | head -n 1)"
-          fi
-
-          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
-            echo "ERROR: La compilación terminó sin generar una APK."
-            exit 1
-          fi
 
           mkdir -p "$RUNNER_TEMP/apk_final"
-          cp "$APK" "$RUNNER_TEMP/apk_final/DENTAL-JG-Cobranza-Recibos.apk"
 
-      - name: Publicar APK
+          for MODULO in gestor-app panel-apk cobranza-app; do
+            echo "======================================"
+            echo "Compilando módulo: $MODULO"
+            echo "======================================"
+
+            gradle --no-daemon \
+              -p "$PROYECTO_DIR" \
+              ":$MODULO:assembleDebug"
+
+            CARPETA="$PROYECTO_DIR/$MODULO/build/outputs/apk"
+
+            APK="$(find "$CARPETA" -type f -name '*.apk' \
+              -path '*/debug/*' -print -quit)"
+
+            if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+              echo "ERROR: No se generó la APK de $MODULO"
+              exit 1
+            fi
+
+            case "$MODULO" in
+              gestor-app)
+                NOMBRE="DENTAL-JG-Gestor.apk"
+                ;;
+              panel-apk)
+                NOMBRE="DENTAL-JG-Panel-Administrativo.apk"
+                ;;
+              cobranza-app)
+                NOMBRE="DENTAL-JG-Cobranza-Recibos.apk"
+                ;;
+            esac
+
+            cp "$APK" "$RUNNER_TEMP/apk_final/$NOMBRE"
+            echo "APK generada: $NOMBRE"
+          done
+
+          echo "Las tres APK se generaron correctamente."
+
+      - name: Publicar las tres APK
         uses: actions/upload-artifact@v4
         with:
-          name: DENTAL-JG-Cobranza-Recibos-APK
-          path: ${{ runner.temp }}/apk_final/DENTAL-JG-Cobranza-Recibos.apk
+          name: DENTAL-JG-Todas-Las-Apps
+          path: ${{ runner.temp }}/apk_final/*.apk
           if-no-files-found: error
           
