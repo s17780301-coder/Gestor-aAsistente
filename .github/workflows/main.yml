@@ -1,21 +1,23 @@
 
-name: Compilar DENTAL JG Cobranza - Una APK
+name: Compilar DENTAL JG Cobranza
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main, master]
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  build-cobranza:
     runs-on: ubuntu-latest
 
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Preparar Java
+      - name: Preparar Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -26,21 +28,44 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Instalar herramientas
-        run: sudo apt-get update && sudo apt-get install -y unzip
-
-      - name: Encontrar proyecto de Cobranza
+      - name: Encontrar proyecto Android
         shell: bash
         run: |
-          PROYECTO=""
+          set -euo pipefail
 
-          while IFS= read -r DIR; do
-            if { [ -f "$DIR/settings.gradle" ] || [ -f "$DIR/settings.gradle.kts" ]; } &&
-               { [ -f "$DIR/app/build.gradle" ] || [ -f "$DIR/app/build.gradle.kts" ]; }; then
-              PROYECTO="$DIR"
-              break
-            fi
-          done < <(find . -type d -not -path "*/.git*" -not -path "*/build/*")
+          PROYECTO=""
+          MODULO=""
+
+          buscar_proyecto() {
+            local BASE="$1"
+            local SETTINGS DIR
+
+            while IFS= read -r SETTINGS; do
+              DIR="$(dirname "$SETTINGS")"
+
+              if grep -Eq "include.*['\"]:app['\"]" "$SETTINGS" &&
+                 { [ -f "$DIR/app/build.gradle" ] ||
+                   [ -f "$DIR/app/build.gradle.kts" ]; }; then
+                PROYECTO="$DIR"
+                MODULO="app"
+                return 0
+              fi
+
+              if grep -Eq "include.*['\"]:cobranza-app['\"]" "$SETTINGS" &&
+                 { [ -f "$DIR/cobranza-app/build.gradle" ] ||
+                   [ -f "$DIR/cobranza-app/build.gradle.kts" ]; }; then
+                PROYECTO="$DIR"
+                MODULO="cobranza-app"
+                return 0
+              fi
+            done < <(
+              find "$BASE" \
+                -type d \( -name .git -o -name build \) -prune -o \
+                -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print
+            )
+          }
+
+          buscar_proyecto "." || true
 
           if [ -z "$PROYECTO" ]; then
             while IFS= read -r ZIP; do
@@ -49,14 +74,7 @@ jobs:
               mkdir -p "$TEMP"
 
               if unzip -q "$ZIP" -d "$TEMP"; then
-                while IFS= read -r SETTINGS; do
-                  DIR=$(dirname "$SETTINGS")
-
-                  if { [ -f "$DIR/app/build.gradle" ] || [ -f "$DIR/app/build.gradle.kts" ]; }; then
-                    PROYECTO="$DIR"
-                    break
-                  fi
-                done < <(find "$TEMP" -type f \( -name settings.gradle -o -name settings.gradle.kts \))
+                buscar_proyecto "$TEMP" || true
               fi
 
               if [ -n "$PROYECTO" ]; then
@@ -66,48 +84,61 @@ jobs:
           fi
 
           if [ -z "$PROYECTO" ]; then
-            echo "ERROR: No se encontró el proyecto Android independiente de Cobranza."
-            echo "Verifica que el proyecto o su ZIP estén en el repositorio."
+            echo "ERROR: No se encontró el proyecto Android."
+            echo "Sube el contenido del proyecto o su ZIP al repositorio."
             exit 1
           fi
 
-          echo "Proyecto encontrado: $PROYECTO"
+          echo "Proyecto: $PROYECTO"
+          echo "Módulo: $MODULO"
           echo "PROYECTO_DIR=$PROYECTO" >> "$GITHUB_ENV"
+          echo "MODULO=$MODULO" >> "$GITHUB_ENV"
 
       - name: Activar AndroidX
         shell: bash
         run: |
-          cd "$PROYECTO_DIR"
-          touch gradle.properties
+          set -euo pipefail
+          ARCHIVO="$PROYECTO_DIR/gradle.properties"
+          touch "$ARCHIVO"
 
-          if grep -q '^android.useAndroidX=' gradle.properties; then
-            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties
-          else
-            echo 'android.useAndroidX=true' >> gradle.properties
-          fi
+          grep -q '^android.useAndroidX=' "$ARCHIVO" \
+            && sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' "$ARCHIVO" \
+            || echo 'android.useAndroidX=true' >> "$ARCHIVO"
 
-      - name: Compilar APK de Cobranza
+          grep -q '^android.enableJetifier=' "$ARCHIVO" \
+            || echo 'android.enableJetifier=true' >> "$ARCHIVO"
+
+      - name: Compilar APK
         shell: bash
         run: |
-          cd "$PROYECTO_DIR"
-          gradle --no-daemon --stacktrace :app:assembleDebug
+          set -euo pipefail
+          gradle --no-daemon \
+            -p "$PROYECTO_DIR" \
+            ":$MODULO:assembleDebug"
 
-      - name: Verificar APK
+      - name: Preparar APK
         shell: bash
         run: |
-          APK="$PROYECTO_DIR/app/build/outputs/apk/debug/app-debug.apk"
+          set -euo pipefail
+          APK="$PROYECTO_DIR/$MODULO/build/outputs/apk/debug/$MODULO-debug.apk"
 
           if [ ! -f "$APK" ]; then
-            echo "ERROR: No se encontró la APK después de compilar."
+            APK="$(find "$PROYECTO_DIR/$MODULO/build/outputs/apk" \
+              -type f -name '*.apk' | head -n 1)"
+          fi
+
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+            echo "ERROR: La compilación terminó sin generar una APK."
             exit 1
           fi
 
-          ls -lh "$APK"
+          mkdir -p "$RUNNER_TEMP/apk_final"
+          cp "$APK" "$RUNNER_TEMP/apk_final/DENTAL-JG-Cobranza-Recibos.apk"
 
-      - name: Publicar APK de Cobranza y Recibos
+      - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
           name: DENTAL-JG-Cobranza-Recibos-APK
-          path: ${{ env.PROYECTO_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ runner.temp }}/apk_final/DENTAL-JG-Cobranza-Recibos.apk
           if-no-files-found: error
           
