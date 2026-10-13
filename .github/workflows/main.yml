@@ -20,7 +20,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
+          # No activar cache aquí: el proyecto Gradle está dentro del ZIP y se extrae después.
 
       - name: Preparar Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
