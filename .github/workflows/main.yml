@@ -68,7 +68,7 @@ jobs:
           while IFS= read -r SETTINGS; do
             DIR="$(dirname "$SETTINGS")"
             TIENE_TRES=true
-            for MODULO in gestor-app panel-apk cobranza-app; do
+            for MODULO in gestor-app panel-apk cobranza-app registro-app; do
               if [ ! -f "$DIR/$MODULO/build.gradle" ] && [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; then
                 TIENE_TRES=false; break
               fi
@@ -79,7 +79,7 @@ jobs:
             if [ "$TIENE_TRES" = true ]; then ROOT="$DIR"; break; fi
           done < <(find "$BASE" -type d \( -name .git -o -name build \) -prune -o -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
           if [ -z "$ROOT" ]; then
-            echo "::error::El ZIP no contiene settings.gradle y los tres módulos Android requeridos (gestor-app, panel-apk y cobranza-app), con sus manifests."
+            echo "::error::El ZIP no contiene settings.gradle y los cuatro módulos Android requeridos (gestor-app, panel-apk, cobranza-app y registro-app), con sus manifests."
             find "$BASE" -type f \( -name settings.gradle -o -name settings.gradle.kts -o -name AndroidManifest.xml -o -name build.gradle -o -name build.gradle.kts \) -not -path '*/build/*' -print | head -250
             exit 1
           fi
@@ -102,31 +102,32 @@ jobs:
           echo "Proyecto: $PROYECTO_DIR"
           gradle --version
           test -f "$PROYECTO_DIR/settings.gradle" -o -f "$PROYECTO_DIR/settings.gradle.kts"
-          for MODULO in gestor-app panel-apk cobranza-app; do
+          for MODULO in gestor-app panel-apk cobranza-app registro-app; do
             test -f "$PROYECTO_DIR/$MODULO/src/main/AndroidManifest.xml" || { echo "::error::Falta AndroidManifest.xml en $MODULO."; exit 1; }
             test -f "$PROYECTO_DIR/$MODULO/build.gradle" -o -f "$PROYECTO_DIR/$MODULO/build.gradle.kts" || { echo "::error::Falta el archivo Gradle del módulo $MODULO."; exit 1; }
           done
-          echo "Los tres módulos están presentes."
+          echo "Los cuatro módulos Android están presentes."
 
       - name: Verificar la cuarta aplicación Registro de Clientes
         shell: bash
         run: |
           set -euo pipefail
-          REGISTRO="$PROYECTO_DIR/registro-web"
+          REGISTRO="$PROYECTO_DIR/registro-app"
+          test -f "$REGISTRO/build.gradle" || { echo "::error::Falta registro-app/build.gradle"; exit 1; }
+          test -f "$REGISTRO/src/main/AndroidManifest.xml" || { echo "::error::Falta el manifest Android de Registro"; exit 1; }
           for ARCHIVO in index.html app.js styles.css config.js manifest.webmanifest; do
-            if [ ! -f "$REGISTRO/$ARCHIVO" ]; then
-              echo "::error::Falta $ARCHIVO en registro-web. La cuarta aplicación no está completa."
-              exit 1
+            if [ ! -f "$REGISTRO/src/main/assets/registro-web/$ARCHIVO" ]; then
+              echo "::error::Falta $ARCHIVO dentro de la aplicación Android Registro"; exit 1
             fi
           done
-          echo "Cuarta aplicación encontrada: Registro de Clientes (PWA web instalable)."
+          echo "Registro de Clientes está configurada como aplicación Android independiente."
 
-      - name: "Compilar las tres aplicaciones Android: Gestor, Panel y Cobranza"
+      - name: "Compilar las cuatro aplicaciones Android: Gestor, Panel, Cobranza y Registro"
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/apk_final"
-          for MODULO in gestor-app panel-apk cobranza-app; do
+          for MODULO in gestor-app panel-apk cobranza-app registro-app; do
             echo "======================================"
             echo "Compilando: $MODULO"
             echo "======================================"
@@ -142,37 +143,17 @@ jobs:
               gestor-app) NOMBRE="DENTAL-JG-Gestor.apk" ;;
               panel-apk) NOMBRE="DENTAL-JG-Panel-Administrativo.apk" ;;
               cobranza-app) NOMBRE="DENTAL-JG-Cobranza-Recibos.apk" ;;
+              registro-app) NOMBRE="DENTAL-JG-Registro-de-Clientes.apk" ;;
             esac
             cp "$APK" "$RUNNER_TEMP/apk_final/$NOMBRE"
             echo "Generada: $NOMBRE"
           done
-          echo "Las tres APK Android se generaron correctamente."
+          echo "Las cuatro APK Android se generaron correctamente."
 
-      - name: Empaquetar Registro de Clientes (cuarta aplicación)
-        shell: bash
-        run: |
-          set -euo pipefail
-          REGISTRO="$PROYECTO_DIR/registro-web"
-          DESTINO="$RUNNER_TEMP/registro-cliente"
-          mkdir -p "$DESTINO"
-          cp -a "$REGISTRO"/. "$DESTINO"/
-          cd "$RUNNER_TEMP"
-          zip -qr "DENTAL-JG-Registro-de-Clientes-PWA.zip" "registro-cliente"
-          echo "Cuarta aplicación empaquetada: DENTAL-JG-Registro-de-Clientes-PWA.zip"
-
-      - name: Publicar la cuarta aplicación Registro de Clientes
+      - name: Publicar las cuatro APK
         uses: actions/upload-artifact@v4
         with:
-          name: DENTAL-JG-Registro-de-Clientes
-          path: ${{ runner.temp }}/DENTAL-JG-Registro-de-Clientes-PWA.zip
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Publicar las tres APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: DENTAL-JG-Tres-Apps-Android
+          name: DENTAL-JG-Cuatro-Apps-Android
           path: ${{ runner.temp }}/apk_final/*.apk
           if-no-files-found: error
           retention-days: 14
-          
