@@ -1,3 +1,4 @@
+
 name: Compilar DENTAL JG Cobranza - Una APK
 
 on:
@@ -25,7 +26,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Instalar unzip
+      - name: Instalar herramientas
         run: sudo apt-get update && sudo apt-get install -y unzip
 
       - name: Encontrar proyecto de Cobranza
@@ -33,52 +34,80 @@ jobs:
         run: |
           PROYECTO=""
 
-          while IFS= read -r ARCHIVO; do
-            if [ -f "$ARCHIVO/settings.gradle" ] || [ -f "$ARCHIVO/settings.gradle.kts" ]; then
-              if [ -f "$ARCHIVO/app/build.gradle" ] || [ -f "$ARCHIVO/app/build.gradle.kts" ]; then
-                PROYECTO="$ARCHIVO"
-                break
-              fi
+          while IFS= read -r DIR; do
+            if { [ -f "$DIR/settings.gradle" ] || [ -f "$DIR/settings.gradle.kts" ]; } &&
+               { [ -f "$DIR/app/build.gradle" ] || [ -f "$DIR/app/build.gradle.kts" ]; }; then
+              PROYECTO="$DIR"
+              break
             fi
-          done < <(find . -type d -not -path "*/.git*" )
+          done < <(find . -type d -not -path "*/.git*" -not -path "*/build/*")
 
           if [ -z "$PROYECTO" ]; then
             while IFS= read -r ZIP; do
-              TEMP="proyecto_extraido"
+              TEMP="$RUNNER_TEMP/cobranza_extraida"
               rm -rf "$TEMP"
               mkdir -p "$TEMP"
+
               if unzip -q "$ZIP" -d "$TEMP"; then
-                PROYECTO=$(find "$TEMP" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print | while read -r S; do
-                  DIR=$(dirname "$S")
-                  if [ -f "$DIR/app/build.gradle" ] || [ -f "$DIR/app/build.gradle.kts" ]; then
-                    echo "$DIR"
+                while IFS= read -r SETTINGS; do
+                  DIR=$(dirname "$SETTINGS")
+
+                  if { [ -f "$DIR/app/build.gradle" ] || [ -f "$DIR/app/build.gradle.kts" ]; }; then
+                    PROYECTO="$DIR"
                     break
                   fi
-                done)
-                if [ -n "$PROYECTO" ]; then
-                  break
-                fi
+                done < <(find "$TEMP" -type f \( -name settings.gradle -o -name settings.gradle.kts \))
               fi
-            done < <(find . -type f -iname "*.zip" ! -path "./proyecto_extraido/*")
+
+              if [ -n "$PROYECTO" ]; then
+                break
+              fi
+            done < <(find . -type f -iname "*.zip" ! -path "*/.git/*")
           fi
 
           if [ -z "$PROYECTO" ]; then
-            echo "ERROR: No encontré el proyecto Android de Cobranza."
-            echo "Revisa que el ZIP independiente de Cobranza esté subido al repositorio."
+            echo "ERROR: No se encontró el proyecto Android independiente de Cobranza."
+            echo "Verifica que el proyecto o su ZIP estén en el repositorio."
             exit 1
           fi
 
-          echo "Proyecto encontrado en: $PROYECTO"
+          echo "Proyecto encontrado: $PROYECTO"
           echo "PROYECTO_DIR=$PROYECTO" >> "$GITHUB_ENV"
 
-      - name: Compilar APK de Cobranza
+      - name: Activar AndroidX
+        shell: bash
         run: |
           cd "$PROYECTO_DIR"
-          gradle --no-daemon :app:assembleDebug
+          touch gradle.properties
 
-      - name: Publicar APK
+          if grep -q '^android.useAndroidX=' gradle.properties; then
+            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties
+          else
+            echo 'android.useAndroidX=true' >> gradle.properties
+          fi
+
+      - name: Compilar APK de Cobranza
+        shell: bash
+        run: |
+          cd "$PROYECTO_DIR"
+          gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Verificar APK
+        shell: bash
+        run: |
+          APK="$PROYECTO_DIR/app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: No se encontró la APK después de compilar."
+            exit 1
+          fi
+
+          ls -lh "$APK"
+
+      - name: Publicar APK de Cobranza y Recibos
         uses: actions/upload-artifact@v4
         with:
           name: DENTAL-JG-Cobranza-Recibos-APK
-          path: ${{ env.PROYECTO_DIR }}/app/build/outputs/apk/debug/*.apk
+          path: ${{ env.PROYECTO_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          
