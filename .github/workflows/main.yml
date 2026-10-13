@@ -108,7 +108,20 @@ jobs:
           done
           echo "Los tres módulos están presentes."
 
-      - name: Compilar Gestor, Panel y Cobranza
+      - name: Verificar la cuarta aplicación Registro de Clientes
+        shell: bash
+        run: |
+          set -euo pipefail
+          REGISTRO="$PROYECTO_DIR/registro-web"
+          for ARCHIVO in index.html app.js styles.css config.js manifest.webmanifest; do
+            if [ ! -f "$REGISTRO/$ARCHIVO" ]; then
+              echo "::error::Falta $ARCHIVO en registro-web. La cuarta aplicación no está completa."
+              exit 1
+            fi
+          done
+          echo "Cuarta aplicación encontrada: Registro de Clientes (PWA web instalable)."
+
+      - name: Compilar las tres aplicaciones Android: Gestor, Panel y Cobranza
         shell: bash
         run: |
           set -euo pipefail
@@ -133,12 +146,32 @@ jobs:
             cp "$APK" "$RUNNER_TEMP/apk_final/$NOMBRE"
             echo "Generada: $NOMBRE"
           done
-          echo "Las tres APK se generaron correctamente."
+          echo "Las tres APK Android se generaron correctamente."
+
+      - name: Empaquetar Registro de Clientes (cuarta aplicación)
+        shell: bash
+        run: |
+          set -euo pipefail
+          REGISTRO="$PROYECTO_DIR/registro-web"
+          DESTINO="$RUNNER_TEMP/registro-cliente"
+          mkdir -p "$DESTINO"
+          cp -a "$REGISTRO"/. "$DESTINO"/
+          cd "$RUNNER_TEMP"
+          zip -qr "DENTAL-JG-Registro-de-Clientes-PWA.zip" "registro-cliente"
+          echo "Cuarta aplicación empaquetada: DENTAL-JG-Registro-de-Clientes-PWA.zip"
+
+      - name: Publicar la cuarta aplicación Registro de Clientes
+        uses: actions/upload-artifact@v4
+        with:
+          name: DENTAL-JG-Registro-de-Clientes
+          path: ${{ runner.temp }}/DENTAL-JG-Registro-de-Clientes-PWA.zip
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Publicar las tres APK
         uses: actions/upload-artifact@v4
         with:
-          name: DENTAL-JG-Todas-Las-Apps
+          name: DENTAL-JG-Tres-Apps-Android
           path: ${{ runner.temp }}/apk_final/*.apk
           if-no-files-found: error
           retention-days: 14
