@@ -1,4 +1,4 @@
-name: Compilar DENTAL JG - Todas las aplicaciones
+name: Compilar DENTAL JG 10.6 - Todas las aplicaciones
 
 on:
   workflow_dispatch:
@@ -27,12 +27,14 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Localizar y extraer ZIP DENTAL JG 10.5
+      - name: Localizar y extraer ZIP DENTAL JG 10.6 o versión compatible
         shell: bash
         run: |
           set -euo pipefail
           ZIP=""
           for CANDIDATO in \
+            "$GITHUB_WORKSPACE/DENTAL_JG_10_6_PAGOS_COBRANZA_IMPRESION.zip" \
+            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_9_LOGO_VECTOR_RECONSTRUIDO.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_5_LOGO_ORIGINAL_RESTAURADO.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_5_CODIGO_CORREGIDO_LOGO.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_5_CORREGIDO_COBRANZA_RECIBOS.zip" \
@@ -41,15 +43,15 @@ jobs:
             if [ -f "$CANDIDATO" ]; then ZIP="$CANDIDATO"; break; fi
           done
           if [ -z "$ZIP" ]; then
-            ZIP="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname 'DENTAL_JG_10_5*.zip' -print -quit)"
+            ZIP="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f \( -iname 'DENTAL_JG_10_6*.zip' -o -iname 'DENTAL_JG_10_5*.zip' \) -print -quit)"
           fi
           if [ -z "$ZIP" ]; then
-            echo "::error::No se encontró el ZIP DENTAL JG 10.5 en la raíz del repositorio."
+            echo "::error::No se encontró el ZIP DENTAL JG 10.6/10.5 en la raíz del repositorio. Sube DENTAL_JG_10_6_PAGOS_COBRANZA_IMPRESION.zip a la raíz del repositorio."
             echo "ZIP disponibles en la raíz:"
             find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname '*.zip' -printf '%f\n' || true
             exit 1
           fi
-          FUENTES="$RUNNER_TEMP/dental_jg_10_5"
+          FUENTES="$RUNNER_TEMP/dental_jg_fuentes"
           mkdir -p "$FUENTES"
           echo "ZIP seleccionado: $ZIP"
           echo "Verificando integridad del ZIP..."
