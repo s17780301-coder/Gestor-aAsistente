@@ -23,7 +23,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Preparar Gradle
+      - name: Preparar Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
@@ -37,26 +37,17 @@ jobs:
           FUENTES="$RUNNER_TEMP/dental_jg_10_5"
 
           if [ ! -f "$ZIP" ]; then
-            echo "::error::No se encontró el ZIP DENTAL JG 10.5 en la raíz del repositorio."
-            find "$GITHUB_WORKSPACE" -maxdepth 3 -type f -iname '*.zip' -print
+            echo "::error::No se encontró el ZIP 10.5 en la raíz del repositorio."
             exit 1
           fi
 
           mkdir -p "$FUENTES"
 
-          echo "Verificando el archivo ZIP..."
+          echo "Verificando ZIP..."
           unzip -t "$ZIP"
 
-          echo "Extrayendo la versión 10.5..."
+          echo "Extrayendo proyecto..."
           unzip -oq "$ZIP" -d "$FUENTES"
-
-          echo "Archivos Gradle encontrados:"
-          find "$FUENTES" -type f \
-            \( -name settings.gradle -o \
-               -name settings.gradle.kts -o \
-               -name build.gradle -o \
-               -name build.gradle.kts \) \
-            -not -path '*/build/*' -print | head -200
 
           echo "PROYECTO_FUENTES=$FUENTES" >> "$GITHUB_ENV"
 
@@ -91,13 +82,10 @@ jobs:
           )
 
           if [ -z "$ROOT" ]; then
-            echo "::error::El ZIP no contiene un proyecto con los tres módulos esperados."
-            echo "Se necesitan gestor-app, panel-apk y cobranza-app."
-            echo ""
-            echo "Estructura de carpetas encontrada:"
+            echo "::error::No se encontró un proyecto con los tres módulos."
+            echo "Carpetas encontradas:"
             find "$BASE" -maxdepth 5 -type d -print | head -200
-            echo ""
-            echo "Archivos de configuración encontrados:"
+            echo "Archivos Gradle encontrados:"
             find "$BASE" -type f \
               \( -name settings.gradle -o \
                  -name settings.gradle.kts -o \
@@ -107,7 +95,7 @@ jobs:
             exit 1
           fi
 
-          echo "Proyecto integrado encontrado: $ROOT"
+          echo "Proyecto seleccionado: $ROOT"
           echo "PROYECTO_DIR=$ROOT" >> "$GITHUB_ENV"
 
       - name: Activar AndroidX
@@ -130,25 +118,22 @@ jobs:
             echo 'android.enableJetifier=true' >> "$ARCHIVO"
           fi
 
-      - name: Verificar Gradle Wrapper
+      - name: Verificar proyecto y Gradle
         shell: bash
         run: |
           set -euo pipefail
 
-          if [ ! -f "$PROYECTO_DIR/gradlew" ]; then
-            echo "::error::El proyecto no contiene gradlew en su carpeta raíz."
-            echo "No se puede garantizar que use la versión de Gradle correcta."
-            exit 1
-          fi
+          echo "Proyecto: $PROYECTO_DIR"
+          gradle --version
 
-          chmod +x "$PROYECTO_DIR/gradlew"
+          for MODULO in gestor-app panel-apk cobranza-app; do
+            if [ ! -d "$PROYECTO_DIR/$MODULO" ]; then
+              echo "::error::No existe el módulo $MODULO."
+              exit 1
+            fi
+          done
 
-          if [ ! -f "$PROYECTO_DIR/gradle/wrapper/gradle-wrapper.properties" ]; then
-            echo "::error::Falta gradle/wrapper/gradle-wrapper.properties."
-            exit 1
-          fi
-
-          echo "Gradle Wrapper encontrado."
+          echo "Los tres módulos están presentes."
 
       - name: Compilar Gestor, Panel y Cobranza
         shell: bash
@@ -160,23 +145,17 @@ jobs:
           for MODULO in gestor-app panel-apk cobranza-app; do
             echo ""
             echo "======================================"
-            echo "Compilando módulo: $MODULO"
+            echo "Compilando: $MODULO"
             echo "======================================"
 
-            if [ ! -d "$PROYECTO_DIR/$MODULO" ]; then
-              echo "::error::No existe la carpeta del módulo $MODULO."
-              exit 1
-            fi
-
-            "$PROYECTO_DIR/gradlew" \
-              --no-daemon \
+            gradle --no-daemon \
               -p "$PROYECTO_DIR" \
               ":$MODULO:assembleDebug"
 
             CARPETA="$PROYECTO_DIR/$MODULO/build/outputs/apk"
 
             if [ ! -d "$CARPETA" ]; then
-              echo "::error::No existe la carpeta de APK para $MODULO."
+              echo "::error::No se encontró la salida APK de $MODULO."
               exit 1
             fi
 
@@ -201,7 +180,7 @@ jobs:
             esac
 
             cp "$APK" "$RUNNER_TEMP/apk_final/$NOMBRE"
-            echo "APK generada: $NOMBRE"
+            echo "Generada: $NOMBRE"
           done
 
           echo "Las tres APK se generaron correctamente."
