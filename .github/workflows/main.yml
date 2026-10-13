@@ -28,63 +28,86 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Encontrar el proyecto con las tres aplicaciones
+      - name: Extraer ZIP DENTAL JG 10.5
         shell: bash
         run: |
           set -euo pipefail
 
-          FUENTES="$RUNNER_TEMP/dental_jg_fuentes"
-          mkdir -p "$FUENTES"
+          ZIP="$GITHUB_WORKSPACE/DENTAL_JG_10_5_COBRANZA_Y_RECIBOS_RECIBO_CIRCULAR.zip"
+          FUENTES="$RUNNER_TEMP/dental_jg_10_5"
 
-          # Extraer los ZIP disponibles en el repositorio.
-          while IFS= read -r ZIP; do
-            NOMBRE="$(basename "$ZIP" .zip)"
-            DESTINO="$FUENTES/$NOMBRE"
-            mkdir -p "$DESTINO"
-            echo "Revisando ZIP: $ZIP"
-            unzip -oq "$ZIP" -d "$DESTINO"
-          done < <(
-            find . -type f -iname '*.zip' \
-              ! -path '*/.git/*' \
-              ! -path '*/build/*'
-          )
-
-          ROOT=""
-          BUSCAR_EN=("$GITHUB_WORKSPACE" "$FUENTES")
-
-          # Buscar primero un proyecto que contenga los tres módulos.
-          for BASE in "${BUSCAR_EN[@]}"; do
-            while IFS= read -r SETTINGS; do
-              DIR="$(dirname "$SETTINGS")"
-
-              TIENE_TRES=true
-              for MODULO in gestor-app panel-apk cobranza-app; do
-                if [ ! -f "$DIR/$MODULO/build.gradle" ] &&
-                   [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; then
-                  TIENE_TRES=false
-                  break
-                fi
-              done
-
-              if [ "$TIENE_TRES" = true ]; then
-                ROOT="$DIR"
-                break 2
-              fi
-            done < <(
-              find "$BASE" \
-                -type d \( -name .git -o -name build \) -prune -o \
-                -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print
-            )
-          done
-
-          if [ -z "$ROOT" ]; then
-            echo "ERROR: No encontré un proyecto que contenga los tres módulos:"
-            echo "gestor-app, panel-apk y cobranza-app."
-            echo "Comprueba que el ZIP del proyecto integrado esté en el repositorio."
+          if [ ! -f "$ZIP" ]; then
+            echo "::error::No se encontró el ZIP DENTAL JG 10.5 en la raíz del repositorio."
+            find "$GITHUB_WORKSPACE" -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
           fi
 
-          echo "Proyecto encontrado: $ROOT"
+          mkdir -p "$FUENTES"
+
+          echo "Verificando el archivo ZIP..."
+          unzip -t "$ZIP"
+
+          echo "Extrayendo la versión 10.5..."
+          unzip -oq "$ZIP" -d "$FUENTES"
+
+          echo "Archivos Gradle encontrados:"
+          find "$FUENTES" -type f \
+            \( -name settings.gradle -o \
+               -name settings.gradle.kts -o \
+               -name build.gradle -o \
+               -name build.gradle.kts \) \
+            -not -path '*/build/*' -print | head -200
+
+          echo "PROYECTO_FUENTES=$FUENTES" >> "$GITHUB_ENV"
+
+      - name: Encontrar el proyecto integrado
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE="$PROYECTO_FUENTES"
+          ROOT=""
+
+          while IFS= read -r SETTINGS; do
+            DIR="$(dirname "$SETTINGS")"
+            TIENE_TRES=true
+
+            for MODULO in gestor-app panel-apk cobranza-app; do
+              if [ ! -f "$DIR/$MODULO/build.gradle" ] &&
+                 [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; then
+                TIENE_TRES=false
+                break
+              fi
+            done
+
+            if [ "$TIENE_TRES" = true ]; then
+              ROOT="$DIR"
+              break
+            fi
+          done < <(
+            find "$BASE" \
+              -type d \( -name .git -o -name build \) -prune -o \
+              -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print
+          )
+
+          if [ -z "$ROOT" ]; then
+            echo "::error::El ZIP no contiene un proyecto con los tres módulos esperados."
+            echo "Se necesitan gestor-app, panel-apk y cobranza-app."
+            echo ""
+            echo "Estructura de carpetas encontrada:"
+            find "$BASE" -maxdepth 5 -type d -print | head -200
+            echo ""
+            echo "Archivos de configuración encontrados:"
+            find "$BASE" -type f \
+              \( -name settings.gradle -o \
+                 -name settings.gradle.kts -o \
+                 -name build.gradle -o \
+                 -name build.gradle.kts \) \
+              -not -path '*/build/*' -print | head -200
+            exit 1
+          fi
+
+          echo "Proyecto integrado encontrado: $ROOT"
           echo "PROYECTO_DIR=$ROOT" >> "$GITHUB_ENV"
 
       - name: Activar AndroidX
@@ -107,6 +130,26 @@ jobs:
             echo 'android.enableJetifier=true' >> "$ARCHIVO"
           fi
 
+      - name: Verificar Gradle Wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "$PROYECTO_DIR/gradlew" ]; then
+            echo "::error::El proyecto no contiene gradlew en su carpeta raíz."
+            echo "No se puede garantizar que use la versión de Gradle correcta."
+            exit 1
+          fi
+
+          chmod +x "$PROYECTO_DIR/gradlew"
+
+          if [ ! -f "$PROYECTO_DIR/gradle/wrapper/gradle-wrapper.properties" ]; then
+            echo "::error::Falta gradle/wrapper/gradle-wrapper.properties."
+            exit 1
+          fi
+
+          echo "Gradle Wrapper encontrado."
+
       - name: Compilar Gestor, Panel y Cobranza
         shell: bash
         run: |
@@ -115,21 +158,33 @@ jobs:
           mkdir -p "$RUNNER_TEMP/apk_final"
 
           for MODULO in gestor-app panel-apk cobranza-app; do
+            echo ""
             echo "======================================"
             echo "Compilando módulo: $MODULO"
             echo "======================================"
 
-            gradle --no-daemon \
+            if [ ! -d "$PROYECTO_DIR/$MODULO" ]; then
+              echo "::error::No existe la carpeta del módulo $MODULO."
+              exit 1
+            fi
+
+            "$PROYECTO_DIR/gradlew" \
+              --no-daemon \
               -p "$PROYECTO_DIR" \
               ":$MODULO:assembleDebug"
 
             CARPETA="$PROYECTO_DIR/$MODULO/build/outputs/apk"
 
+            if [ ! -d "$CARPETA" ]; then
+              echo "::error::No existe la carpeta de APK para $MODULO."
+              exit 1
+            fi
+
             APK="$(find "$CARPETA" -type f -name '*.apk' \
               -path '*/debug/*' -print -quit)"
 
             if [ -z "$APK" ] || [ ! -f "$APK" ]; then
-              echo "ERROR: No se generó la APK de $MODULO"
+              echo "::error::No se generó la APK de $MODULO."
               exit 1
             fi
 
