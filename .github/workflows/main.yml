@@ -1,5 +1,5 @@
 
-name: Compilar Gestoria Asistente
+name: Compilar DENTAL JG - Dos APK
 
 on:
   workflow_dispatch:
@@ -13,12 +13,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Preparar Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Preparar Gradle actualizado
+      - name: Preparar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
@@ -26,27 +26,44 @@ jobs:
       - name: Instalar herramientas
         run: sudo apt-get update && sudo apt-get install -y unzip
 
-      - name: Descomprimir y compilar
+      - name: Encontrar y descomprimir el proyecto nuevo
         run: |
-          ZIP=$(find . -maxdepth 3 -type f -iname "*.zip" | head -n 1)
-          if [ -z "$ZIP" ]; then
-            echo "ERROR: No se encontro el ZIP"
-            exit 1
-          fi
-          mkdir proyecto
-          unzip -q "$ZIP" -d proyecto
-          DIR=$(find proyecto -type f -name settings.gradle | head -n 1)
-          if [ -z "$DIR" ]; then
-            echo "ERROR: No se encontro settings.gradle"
-            exit 1
-          fi
-          cd "$(dirname "$DIR")"
-          gradle --no-daemon assembleDebug
+          ZIP=$(find . -type f -iname "DENTAL_JG_V9_5_DOS_APK_SUPABASE.zip" -print -quit)
 
-      - name: Guardar APK
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: No se encontró el ZIP nuevo."
+            exit 1
+          fi
+
+          mkdir -p proyecto
+          unzip -q "$ZIP" -d proyecto
+
+          SETTINGS=$(find proyecto -type f -name settings.gradle -print -quit)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: No se encontró settings.gradle."
+            exit 1
+          fi
+
+          echo "PROYECTO_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
+
+      - name: Compilar APK del gestor y del panel
+        run: |
+          cd "$PROYECTO_DIR"
+          gradle --no-daemon \
+            :gestor-app:assembleDebug \
+            :panel-apk:assembleDebug
+
+      - name: Publicar APK del gestor
         uses: actions/upload-artifact@v4
         with:
-          name: GestoriaAsistente-APK
-          path: proyecto/**/build/outputs/apk/debug/*.apk
+          name: DENTAL-JG-Gestor
+          path: proyecto/**/gestor-app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-          
+
+      - name: Publicar APK del panel administrativo
+        uses: actions/upload-artifact@v4
+        with:
+          name: DENTAL-JG-Panel-Administrativo
+          path: proyecto/**/panel-apk/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
