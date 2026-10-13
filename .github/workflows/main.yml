@@ -1,7 +1,10 @@
-name: Compilar DENTAL JG - Dos APK
+name: Compilar DENTAL JG Cobranza - Una APK
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -22,52 +25,24 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Instalar herramientas
-        run: sudo apt-get update && sudo apt-get install -y unzip
-
-      - name: Encontrar y descomprimir el proyecto
-        shell: bash
+      - name: Verificar proyecto
         run: |
-          ZIP=""
-          while IFS= read -r ARCHIVO; do
-            if unzip -Z1 "$ARCHIVO" | grep -qE '(^|/)gestor-app/build.gradle$' &&
-               unzip -Z1 "$ARCHIVO" | grep -qE '(^|/)panel-apk/build.gradle$'; then
-              ZIP="$ARCHIVO"
-              break
-            fi
-          done < <(find . -type f -iname "*.zip" ! -path "./proyecto/*")
-
-          if [ -z "$ZIP" ]; then
-            echo "ERROR: Ningún ZIP contiene gestor-app y panel-apk."
+          if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
+            echo "ERROR: Falta settings.gradle en la raiz"
             exit 1
           fi
 
-          mkdir -p proyecto
-          unzip -q "$ZIP" -d proyecto
-
-          SETTINGS=$(find proyecto -type f -name settings.gradle -print -quit)
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: No se encontró settings.gradle."
+          if [ ! -f app/build.gradle ] && [ ! -f app/build.gradle.kts ]; then
+            echo "ERROR: Falta el modulo app de Cobranza"
             exit 1
           fi
 
-          echo "PROYECTO_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
+      - name: Compilar APK de Cobranza
+        run: gradle --no-daemon :app:assembleDebug
 
-      - name: Compilar APK del gestor y del panel
-        run: |
-          cd "$PROYECTO_DIR"
-          gradle --no-daemon :gestor-app:assembleDebug :panel-apk:assembleDebug
-
-      - name: Publicar APK del gestor
+      - name: Publicar APK de Cobranza
         uses: actions/upload-artifact@v4
         with:
-          name: DENTAL-JG-Gestor
-          path: proyecto/**/gestor-app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
-      - name: Publicar APK del panel administrativo
-        uses: actions/upload-artifact@v4
-        with:
-          name: DENTAL-JG-Panel-Administrativo
-          path: proyecto/**/panel-apk/build/outputs/apk/debug/*.apk
+          name: DENTAL-JG-Cobranza-Recibos-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
