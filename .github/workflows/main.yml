@@ -1,4 +1,4 @@
-name: Compilar DENTAL JG 10.6 - Todas las aplicaciones
+name: Compilar DENTAL JG 10.8 - Todas las aplicaciones
 
 on:
   workflow_dispatch:
@@ -20,19 +20,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          # No activar cache aquí: el proyecto Gradle está dentro del ZIP y se extrae después.
 
       - name: Preparar Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Localizar y extraer ZIP DENTAL JG 10.6 o versión compatible
+      - name: Localizar y extraer ZIP DENTAL JG
         shell: bash
         run: |
           set -euo pipefail
           ZIP=""
           for CANDIDATO in \
+            "$GITHUB_WORKSPACE/DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO.zip" \
+            "$GITHUB_WORKSPACE/DENTAL_JG_10_7_CARTERAS_GUIA_REGISTRO.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_6_PAGOS_COBRANZA_IMPRESION.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_5_9_LOGO_VECTOR_RECONSTRUIDO.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_5_LOGO_ORIGINAL_RESTAURADO.zip" \
@@ -43,10 +44,10 @@ jobs:
             if [ -f "$CANDIDATO" ]; then ZIP="$CANDIDATO"; break; fi
           done
           if [ -z "$ZIP" ]; then
-            ZIP="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f \( -iname 'DENTAL_JG_10_6*.zip' -o -iname 'DENTAL_JG_10_5*.zip' \) -print -quit)"
+            ZIP="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f \( -iname 'DENTAL_JG_10_8*.zip' -o -iname 'DENTAL_JG_10_7*.zip' -o -iname 'DENTAL_JG_10_6*.zip' -o -iname 'DENTAL_JG_10_5*.zip' \) -print | sort -V | tail -n 1)"
           fi
           if [ -z "$ZIP" ]; then
-            echo "::error::No se encontró el ZIP DENTAL JG 10.6/10.5 en la raíz del repositorio. Sube DENTAL_JG_10_6_PAGOS_COBRANZA_IMPRESION.zip a la raíz del repositorio."
+            echo "::error::No se encontró un ZIP compatible de DENTAL JG 10.8/10.7/10.6/10.5 en la raíz del repositorio. Sube DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO.zip a la raíz."
             echo "ZIP disponibles en la raíz:"
             find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname '*.zip' -printf '%f\n' || true
             exit 1
@@ -54,9 +55,7 @@ jobs:
           FUENTES="$RUNNER_TEMP/dental_jg_fuentes"
           mkdir -p "$FUENTES"
           echo "ZIP seleccionado: $ZIP"
-          echo "Verificando integridad del ZIP..."
           unzip -t "$ZIP"
-          echo "Extrayendo proyecto..."
           unzip -oq "$ZIP" -d "$FUENTES"
           echo "PROYECTO_FUENTES=$FUENTES" >> "$GITHUB_ENV"
 
@@ -73,13 +72,15 @@ jobs:
               if [ ! -f "$DIR/$MODULO/build.gradle" ] && [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; then
                 TIENE_TRES=false; break
               fi
+              if [ ! -f "$DIR/$MODULO/src/main/AndroidManifest.xml" ]; then
+                TIENE_TRES=false; break
+              fi
             done
             if [ "$TIENE_TRES" = true ]; then ROOT="$DIR"; break; fi
           done < <(find "$BASE" -type d \( -name .git -o -name build \) -prune -o -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
           if [ -z "$ROOT" ]; then
-            echo "::error::El ZIP no contiene un proyecto Gradle con los tres módulos requeridos."
-            echo "Archivos Gradle encontrados:"
-            find "$BASE" -type f \( -name settings.gradle -o -name settings.gradle.kts -o -name build.gradle -o -name build.gradle.kts \) -not -path '*/build/*' -print | head -200
+            echo "::error::El ZIP no contiene settings.gradle y los tres módulos Android requeridos (gestor-app, panel-apk y cobranza-app), con sus manifests."
+            find "$BASE" -type f \( -name settings.gradle -o -name settings.gradle.kts -o -name AndroidManifest.xml -o -name build.gradle -o -name build.gradle.kts \) -not -path '*/build/*' -print | head -250
             exit 1
           fi
           echo "Proyecto seleccionado: $ROOT"
@@ -102,8 +103,8 @@ jobs:
           gradle --version
           test -f "$PROYECTO_DIR/settings.gradle" -o -f "$PROYECTO_DIR/settings.gradle.kts"
           for MODULO in gestor-app panel-apk cobranza-app; do
-            if [ ! -f "$PROYECTO_DIR/$MODULO/src/main/AndroidManifest.xml" ]; then echo "::error::Falta AndroidManifest.xml en $MODULO."; exit 1; fi
-            if [ ! -f "$PROYECTO_DIR/$MODULO/build.gradle" ] && [ ! -f "$PROYECTO_DIR/$MODULO/build.gradle.kts" ]; then echo "::error::Falta el archivo Gradle del módulo $MODULO."; exit 1; fi
+            test -f "$PROYECTO_DIR/$MODULO/src/main/AndroidManifest.xml" || { echo "::error::Falta AndroidManifest.xml en $MODULO."; exit 1; }
+            test -f "$PROYECTO_DIR/$MODULO/build.gradle" -o -f "$PROYECTO_DIR/$MODULO/build.gradle.kts" || { echo "::error::Falta el archivo Gradle del módulo $MODULO."; exit 1; }
           done
           echo "Los tres módulos están presentes."
 
