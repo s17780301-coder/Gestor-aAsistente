@@ -26,63 +26,63 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Localizar y extraer ZIP DENTAL JG
+      - name: Localizar el proyecto (repositorio o ZIP)
         shell: bash
         run: |
           set -euo pipefail
-          ZIP=""
-          for CANDIDATO in \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO.zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO_4_APPS_APK.zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO_4_APPS.zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_7_CARTERAS_GUIA_REGISTRO.zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_6_PAGOS_COBRANZA_IMPRESION.zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_9_LOGO_VECTOR_RECONSTRUIDO.zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_LOGO_ORIGINAL_RESTAURADO.zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_CODIGO_CORREGIDO_LOGO.zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_CORREGIDO_COBRANZA_RECIBOS.zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_CORREGIDO_COBRANZA_RECIBOS(1).zip" \
-            "$GITHUB_WORKSPACE/DENTAL_JG_10_5_COBRANZA_Y_RECIBOS_RECIBO_CIRCULAR.zip"; do
-            if [ -f "$CANDIDATO" ]; then ZIP="$CANDIDATO"; break; fi
-          done
-          if [ -z "$ZIP" ]; then
-            ZIP="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f \( -iname 'DENTAL_JG_10_8*.zip' -o -iname 'DENTAL_JG_10_7*.zip' -o -iname 'DENTAL_JG_10_6*.zip' -o -iname 'DENTAL_JG_10_5*.zip' \) -print | sort -V | tail -n 1)"
-          fi
-          if [ -z "$ZIP" ]; then
-            echo "::error::No se encontró ningún ZIP compatible en la raíz del repositorio. Sube DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO.zip (versión de cuatro APK) a la raíz del repositorio y vuelve a ejecutar."
-            echo "ZIP disponibles en la raíz:"
-            find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname '*.zip' -printf '%f\n' || true
-            exit 1
-          fi
+          WORK="$GITHUB_WORKSPACE"
           FUENTES="$RUNNER_TEMP/dental_jg_fuentes"
           mkdir -p "$FUENTES"
-          echo "ZIP seleccionado: $ZIP"
-          unzip -t "$ZIP"
-          unzip -oq "$ZIP" -d "$FUENTES"
-          echo "PROYECTO_FUENTES=$FUENTES" >> "$GITHUB_ENV"
-
-      - name: Encontrar el proyecto integrado
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE="$PROYECTO_FUENTES"
           ROOT=""
+
+          # Primero: si el código ya está extraído en el repositorio, usarlo directamente.
           while IFS= read -r SETTINGS; do
             DIR="$(dirname "$SETTINGS")"
-            TIENE_TRES=true
+            OK=true
             for MODULO in gestor-app panel-apk cobranza-app registro-app; do
-              if [ ! -f "$DIR/$MODULO/build.gradle" ] && [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; then
-                TIENE_TRES=false; break
-              fi
-              if [ ! -f "$DIR/$MODULO/src/main/AndroidManifest.xml" ]; then
-                TIENE_TRES=false; break
+              if { [ ! -f "$DIR/$MODULO/build.gradle" ] && [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; } || [ ! -f "$DIR/$MODULO/src/main/AndroidManifest.xml" ]; then
+                OK=false; break
               fi
             done
-            if [ "$TIENE_TRES" = true ]; then ROOT="$DIR"; break; fi
-          done < <(find "$BASE" -type d \( -name .git -o -name build \) -prune -o -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
+            if [ "$OK" = true ]; then ROOT="$DIR"; break; fi
+          done < <(find "$WORK" -type d \( -name .git -o -name build -o -name .gradle \) -prune -o -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
+
+          # Segundo: buscar ZIPs en toda la copia del repositorio, no solo en la raíz.
           if [ -z "$ROOT" ]; then
-            echo "::error::El ZIP no contiene settings.gradle y los cuatro módulos Android requeridos (gestor-app, panel-apk, cobranza-app y registro-app), con sus manifests."
-            find "$BASE" -type f \( -name settings.gradle -o -name settings.gradle.kts -o -name AndroidManifest.xml -o -name build.gradle -o -name build.gradle.kts \) -not -path '*/build/*' -print | head -250
+            ZIP=""
+            while IFS= read -r CANDIDATO; do
+              if unzip -Z1 "$CANDIDATO" 2>/dev/null | grep -Eq '(^|/)registro-app/src/main/AndroidManifest.xml$'; then
+                ZIP="$CANDIDATO"; break
+              fi
+            done < <(find "$WORK" -type d \( -name .git -o -name .github \) -prune -o -type f -iname 'DENTAL_JG*.zip' -print | sort)
+
+            if [ -z "$ZIP" ]; then
+              echo "::error::No se encontró el proyecto con sus cuatro módulos ni un ZIP DENTAL_JG que incluya registro-app."
+              echo "Archivos ZIP encontrados en cualquier carpeta del repositorio:"
+              find "$WORK" -type f -iname '*.zip' -printf '%P\n' || true
+              echo "Archivos Gradle encontrados:"
+              find "$WORK" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path '*/.git/*' -print | head -80 || true
+              echo "Sube el ZIP de cuatro APK al repositorio o sube el proyecto extraído con sus cuatro módulos."
+              exit 1
+            fi
+
+            echo "ZIP seleccionado: $ZIP"
+            unzip -t "$ZIP"
+            unzip -oq "$ZIP" -d "$FUENTES"
+            while IFS= read -r SETTINGS; do
+              DIR="$(dirname "$SETTINGS")"
+              OK=true
+              for MODULO in gestor-app panel-apk cobranza-app registro-app; do
+                if { [ ! -f "$DIR/$MODULO/build.gradle" ] && [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; } || [ ! -f "$DIR/$MODULO/src/main/AndroidManifest.xml" ]; then
+                  OK=false; break
+                fi
+              done
+              if [ "$OK" = true ]; then ROOT="$DIR"; break; fi
+            done < <(find "$FUENTES" -type d \( -name .git -o -name build -o -name .gradle \) -prune -o -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
+          fi
+
+          if [ -z "$ROOT" ]; then
+            echo "::error::El proyecto encontrado no contiene los cuatro módulos Android requeridos con sus manifests."
             exit 1
           fi
           echo "Proyecto seleccionado: $ROOT"
