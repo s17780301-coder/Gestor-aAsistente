@@ -1,40 +1,23 @@
-
-name: Compilar DENTAL JG - Dos APK
-
-on:
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v4
-
-      - name: Preparar Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Preparar Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Instalar herramientas
-        run: sudo apt-get update && sudo apt-get install -y unzip
-
       - name: Encontrar y descomprimir el proyecto nuevo
+        shell: bash
         run: |
-          ZIP=$(find . -type f -iname "DENTAL_JG_V9_5_DOS_APK_SUPABASE.zip" -print -quit)
+          ZIP=""
+
+          while IFS= read -r ARCHIVO; do
+            if unzip -Z1 "$ARCHIVO" | grep -qE '(^|/)gestor-app/build.gradle$' &&
+               unzip -Z1 "$ARCHIVO" | grep -qE '(^|/)panel-apk/build.gradle$'; then
+              ZIP="$ARCHIVO"
+              break
+            fi
+          done < <(find . -type f -iname "*.zip" ! -path "./proyecto/*")
 
           if [ -z "$ZIP" ]; then
-            echo "ERROR: No se encontró el ZIP nuevo."
+            echo "ERROR: Ningún ZIP contiene los módulos gestor-app y panel-apk."
+            echo "Comprueba que el ZIP nuevo esté subido al repositorio."
             exit 1
           fi
 
+          echo "Proyecto encontrado: $ZIP"
           mkdir -p proyecto
           unzip -q "$ZIP" -d proyecto
 
@@ -46,24 +29,3 @@ jobs:
           fi
 
           echo "PROYECTO_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
-
-      - name: Compilar APK del gestor y del panel
-        run: |
-          cd "$PROYECTO_DIR"
-          gradle --no-daemon \
-            :gestor-app:assembleDebug \
-            :panel-apk:assembleDebug
-
-      - name: Publicar APK del gestor
-        uses: actions/upload-artifact@v4
-        with:
-          name: DENTAL-JG-Gestor
-          path: proyecto/**/gestor-app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
-      - name: Publicar APK del panel administrativo
-        uses: actions/upload-artifact@v4
-        with:
-          name: DENTAL-JG-Panel-Administrativo
-          path: proyecto/**/panel-apk/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
