@@ -25,24 +25,60 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Verificar proyecto
+      - name: Instalar unzip
+        run: sudo apt-get update && sudo apt-get install -y unzip
+
+      - name: Encontrar proyecto de Cobranza
+        shell: bash
         run: |
-          if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
-            echo "ERROR: Falta settings.gradle en la raiz"
+          PROYECTO=""
+
+          while IFS= read -r ARCHIVO; do
+            if [ -f "$ARCHIVO/settings.gradle" ] || [ -f "$ARCHIVO/settings.gradle.kts" ]; then
+              if [ -f "$ARCHIVO/app/build.gradle" ] || [ -f "$ARCHIVO/app/build.gradle.kts" ]; then
+                PROYECTO="$ARCHIVO"
+                break
+              fi
+            fi
+          done < <(find . -type d -not -path "*/.git*" )
+
+          if [ -z "$PROYECTO" ]; then
+            while IFS= read -r ZIP; do
+              TEMP="proyecto_extraido"
+              rm -rf "$TEMP"
+              mkdir -p "$TEMP"
+              if unzip -q "$ZIP" -d "$TEMP"; then
+                PROYECTO=$(find "$TEMP" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print | while read -r S; do
+                  DIR=$(dirname "$S")
+                  if [ -f "$DIR/app/build.gradle" ] || [ -f "$DIR/app/build.gradle.kts" ]; then
+                    echo "$DIR"
+                    break
+                  fi
+                done)
+                if [ -n "$PROYECTO" ]; then
+                  break
+                fi
+              fi
+            done < <(find . -type f -iname "*.zip" ! -path "./proyecto_extraido/*")
+          fi
+
+          if [ -z "$PROYECTO" ]; then
+            echo "ERROR: No encontré el proyecto Android de Cobranza."
+            echo "Revisa que el ZIP independiente de Cobranza esté subido al repositorio."
             exit 1
           fi
 
-          if [ ! -f app/build.gradle ] && [ ! -f app/build.gradle.kts ]; then
-            echo "ERROR: Falta el modulo app de Cobranza"
-            exit 1
-          fi
+          echo "Proyecto encontrado en: $PROYECTO"
+          echo "PROYECTO_DIR=$PROYECTO" >> "$GITHUB_ENV"
 
       - name: Compilar APK de Cobranza
-        run: gradle --no-daemon :app:assembleDebug
+        run: |
+          cd "$PROYECTO_DIR"
+          gradle --no-daemon :app:assembleDebug
 
-      - name: Publicar APK de Cobranza
+      - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
           name: DENTAL-JG-Cobranza-Recibos-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROYECTO_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
