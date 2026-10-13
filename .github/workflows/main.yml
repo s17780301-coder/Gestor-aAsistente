@@ -33,6 +33,8 @@ jobs:
           ZIP=""
           for CANDIDATO in \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO.zip" \
+            "$GITHUB_WORKSPACE/DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO_4_APPS_APK.zip" \
+            "$GITHUB_WORKSPACE/DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO_4_APPS.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_7_CARTERAS_GUIA_REGISTRO.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_6_PAGOS_COBRANZA_IMPRESION.zip" \
             "$GITHUB_WORKSPACE/DENTAL_JG_10_5_9_LOGO_VECTOR_RECONSTRUIDO.zip" \
@@ -47,7 +49,7 @@ jobs:
             ZIP="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f \( -iname 'DENTAL_JG_10_8*.zip' -o -iname 'DENTAL_JG_10_7*.zip' -o -iname 'DENTAL_JG_10_6*.zip' -o -iname 'DENTAL_JG_10_5*.zip' \) -print | sort -V | tail -n 1)"
           fi
           if [ -z "$ZIP" ]; then
-            echo "::error::No se encontró un ZIP compatible de DENTAL JG 10.8/10.7/10.6/10.5 en la raíz del repositorio. Sube DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO.zip a la raíz."
+            echo "::error::No se encontró ningún ZIP compatible en la raíz del repositorio. Sube DENTAL_JG_10_8_FLUJO_CENTRALIZADO_REGISTRO.zip (versión de cuatro APK) a la raíz del repositorio y vuelve a ejecutar."
             echo "ZIP disponibles en la raíz:"
             find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname '*.zip' -printf '%f\n' || true
             exit 1
