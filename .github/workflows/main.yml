@@ -121,7 +121,7 @@ jobs:
           done
           echo "Cuarta aplicación encontrada: Registro de Clientes (PWA web instalable)."
 
-      - name: Compilar las tres aplicaciones Android: Gestor, Panel y Cobranza
+      - name: "Compilar las tres aplicaciones Android: Gestor, Panel y Cobranza"
         shell: bash
         run: |
           set -euo pipefail
