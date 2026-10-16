@@ -11,6 +11,7 @@ permissions:
 jobs:
   build-todas:
     runs-on: ubuntu-latest
+
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -26,65 +27,114 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Localizar el proyecto (repositorio o ZIP)
+      - name: Localizar y preparar el proyecto
         shell: bash
         run: |
           set -euo pipefail
+
           WORK="$GITHUB_WORKSPACE"
           FUENTES="$RUNNER_TEMP/dental_jg_fuentes"
           mkdir -p "$FUENTES"
           ROOT=""
 
-          # Primero: si el código ya está extraído en el repositorio, usarlo directamente.
-          while IFS= read -r SETTINGS; do
-            DIR="$(dirname "$SETTINGS")"
-            OK=true
-            for MODULO in gestor-app panel-apk cobranza-app registro-app; do
-              if { [ ! -f "$DIR/$MODULO/build.gradle" ] && [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; } || [ ! -f "$DIR/$MODULO/src/main/AndroidManifest.xml" ]; then
-                OK=false; break
-              fi
+          # Comprueba que una carpeta contiene los cuatro módulos.
+          es_proyecto() {
+            local dir="$1"
+            local modulo
+
+            if [[ ! -f "$dir/settings.gradle" && ! -f "$dir/settings.gradle.kts" ]]; then
+              return 1
+            fi
+
+            for modulo in gestor-app panel-apk cobranza-app registro-app; do
+              [[ -f "$dir/$modulo/src/main/AndroidManifest.xml" ]] || return 1
+              [[ -f "$dir/$modulo/build.gradle" || -f "$dir/$modulo/build.gradle.kts" ]] || return 1
             done
-            if [ "$OK" = true ]; then ROOT="$DIR"; break; fi
-          done < <(find "$WORK" -type d \( -name .git -o -name build -o -name .gradle \) -prune -o -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
 
-          # Segundo: buscar ZIPs en toda la copia del repositorio, no solo en la raíz.
-          if [ -z "$ROOT" ]; then
+            return 0
+          }
+
+          # PRIMERA OPCIÓN: buscar el proyecto ya extraído.
+          while IFS= read -r -d '' SETTINGS; do
+            DIR="$(dirname "$SETTINGS")"
+
+            if es_proyecto "$DIR"; then
+              ROOT="$DIR"
+              break
+            fi
+          done < <(
+            find "$WORK" \
+              -type d \( -name .git -o -name build -o -name .gradle \) -prune -o \
+              -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print0
+          )
+
+          # SEGUNDA OPCIÓN: buscar ZIP con cualquier nombre.
+          if [[ -z "$ROOT" ]]; then
             ZIP=""
-            while IFS= read -r CANDIDATO; do
-              if unzip -Z1 "$CANDIDATO" 2>/dev/null | grep -Eq '(^|/)registro-app/src/main/AndroidManifest.xml$'; then
-                ZIP="$CANDIDATO"; break
-              fi
-            done < <(find "$WORK" -type d \( -name .git -o -name .github \) -prune -o -type f -iname 'DENTAL_JG*.zip' -print | sort)
 
-            if [ -z "$ZIP" ]; then
-              echo "::error::No se encontró el proyecto con sus cuatro módulos ni un ZIP DENTAL_JG que incluya registro-app."
-              echo "Archivos ZIP encontrados en cualquier carpeta del repositorio:"
-              find "$WORK" -type f -iname '*.zip' -printf '%P\n' || true
+            while IFS= read -r -d '' CANDIDATO; do
+              echo "Revisando ZIP: $CANDIDATO"
+
+              if ! unzip -tq "$CANDIDATO" >/dev/null 2>&1; then
+                echo "ZIP inválido; se omite."
+                continue
+              fi
+
+              LISTA="$(unzip -Z1 "$CANDIDATO" 2>/dev/null || true)"
+
+              if grep -Eq '(^|/)gestor-app/src/main/AndroidManifest.xml$' <<< "$LISTA" &&
+                 grep -Eq '(^|/)panel-apk/src/main/AndroidManifest.xml$' <<< "$LISTA" &&
+                 grep -Eq '(^|/)cobranza-app/src/main/AndroidManifest.xml$' <<< "$LISTA" &&
+                 grep -Eq '(^|/)registro-app/src/main/AndroidManifest.xml$' <<< "$LISTA"; then
+                ZIP="$CANDIDATO"
+                break
+              fi
+            done < <(
+              find "$WORK" \
+                -type d \( -name .git -o -name .github \) -prune -o \
+                -type f -iname '*.zip' -print0 | sort -z
+            )
+
+            if [[ -z "$ZIP" ]]; then
+              echo "::error::No se encontró un proyecto completo ni un ZIP con las cuatro aplicaciones."
+              echo "ZIP encontrados:"
+              find "$WORK" \
+                -type d -name .git -prune -o \
+                -type f -iname '*.zip' -printf '%P\n' || true
+
               echo "Archivos Gradle encontrados:"
-              find "$WORK" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path '*/.git/*' -print | head -80 || true
-              echo "Sube el ZIP de cuatro APK al repositorio o sube el proyecto extraído con sus cuatro módulos."
+              find "$WORK" \
+                -type d -name .git -prune -o \
+                -type f \( -name settings.gradle -o -name settings.gradle.kts \) \
+                -print | head -80 || true
+
+              echo "Sube el ZIP completo de DENTAL JG al repositorio o añade el proyecto extraído."
               exit 1
             fi
 
             echo "ZIP seleccionado: $ZIP"
-            unzip -t "$ZIP"
             unzip -oq "$ZIP" -d "$FUENTES"
-            while IFS= read -r SETTINGS; do
+
+            # Localizar la raíz Gradle después de extraer el ZIP.
+            while IFS= read -r -d '' SETTINGS; do
               DIR="$(dirname "$SETTINGS")"
-              OK=true
-              for MODULO in gestor-app panel-apk cobranza-app registro-app; do
-                if { [ ! -f "$DIR/$MODULO/build.gradle" ] && [ ! -f "$DIR/$MODULO/build.gradle.kts" ]; } || [ ! -f "$DIR/$MODULO/src/main/AndroidManifest.xml" ]; then
-                  OK=false; break
-                fi
-              done
-              if [ "$OK" = true ]; then ROOT="$DIR"; break; fi
-            done < <(find "$FUENTES" -type d \( -name .git -o -name build -o -name .gradle \) -prune -o -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print)
+
+              if es_proyecto "$DIR"; then
+                ROOT="$DIR"
+                break
+              fi
+            done < <(
+              find "$FUENTES" \
+                -type d \( -name build -o -name .gradle \) -prune -o \
+                -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print0
+            )
           fi
 
-          if [ -z "$ROOT" ]; then
-            echo "::error::El proyecto encontrado no contiene los cuatro módulos Android requeridos con sus manifests."
+          if [[ -z "$ROOT" ]]; then
+            echo "::error::No se pudo localizar la raíz del proyecto con los cuatro módulos."
             exit 1
           fi
+
           echo "Proyecto seleccionado: $ROOT"
           echo "PROYECTO_DIR=$ROOT" >> "$GITHUB_ENV"
 
@@ -92,65 +142,120 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           ARCHIVO="$PROYECTO_DIR/gradle.properties"
           touch "$ARCHIVO"
-          if grep -q '^android.useAndroidX=' "$ARCHIVO"; then sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' "$ARCHIVO"; else echo 'android.useAndroidX=true' >> "$ARCHIVO"; fi
-          if grep -q '^android.enableJetifier=' "$ARCHIVO"; then sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' "$ARCHIVO"; else echo 'android.enableJetifier=true' >> "$ARCHIVO"; fi
 
-      - name: Verificar proyecto y versiones
+          if grep -q '^android.useAndroidX=' "$ARCHIVO"; then
+            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' "$ARCHIVO"
+          else
+            echo 'android.useAndroidX=true' >> "$ARCHIVO"
+          fi
+
+          if grep -q '^android.enableJetifier=' "$ARCHIVO"; then
+            sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' "$ARCHIVO"
+          else
+            echo 'android.enableJetifier=true' >> "$ARCHIVO"
+          fi
+
+      - name: Verificar proyecto y módulos
         shell: bash
         run: |
           set -euo pipefail
+
           echo "Proyecto: $PROYECTO_DIR"
           gradle --version
-          test -f "$PROYECTO_DIR/settings.gradle" -o -f "$PROYECTO_DIR/settings.gradle.kts"
-          for MODULO in gestor-app panel-apk cobranza-app registro-app; do
-            test -f "$PROYECTO_DIR/$MODULO/src/main/AndroidManifest.xml" || { echo "::error::Falta AndroidManifest.xml en $MODULO."; exit 1; }
-            test -f "$PROYECTO_DIR/$MODULO/build.gradle" -o -f "$PROYECTO_DIR/$MODULO/build.gradle.kts" || { echo "::error::Falta el archivo Gradle del módulo $MODULO."; exit 1; }
-          done
-          echo "Los cuatro módulos Android están presentes."
 
-      - name: Verificar la cuarta aplicación Registro de Clientes
-        shell: bash
-        run: |
-          set -euo pipefail
-          REGISTRO="$PROYECTO_DIR/registro-app"
-          test -f "$REGISTRO/build.gradle" || { echo "::error::Falta registro-app/build.gradle"; exit 1; }
-          test -f "$REGISTRO/src/main/AndroidManifest.xml" || { echo "::error::Falta el manifest Android de Registro"; exit 1; }
-          for ARCHIVO in index.html app.js styles.css config.js manifest.webmanifest; do
-            if [ ! -f "$REGISTRO/src/main/assets/registro-web/$ARCHIVO" ]; then
-              echo "::error::Falta $ARCHIVO dentro de la aplicación Android Registro"; exit 1
+          if [[ ! -f "$PROYECTO_DIR/settings.gradle" && ! -f "$PROYECTO_DIR/settings.gradle.kts" ]]; then
+            echo "::error::Falta settings.gradle o settings.gradle.kts."
+            exit 1
+          fi
+
+          for MODULO in gestor-app panel-apk cobranza-app registro-app; do
+            if [[ ! -f "$PROYECTO_DIR/$MODULO/src/main/AndroidManifest.xml" ]]; then
+              echo "::error::Falta AndroidManifest.xml en $MODULO."
+              exit 1
+            fi
+
+            if [[ ! -f "$PROYECTO_DIR/$MODULO/build.gradle" && ! -f "$PROYECTO_DIR/$MODULO/build.gradle.kts" ]]; then
+              echo "::error::Falta build.gradle o build.gradle.kts en $MODULO."
+              exit 1
             fi
           done
-          echo "Registro de Clientes está configurada como aplicación Android independiente."
 
-      - name: "Compilar las cuatro aplicaciones Android: Gestor, Panel, Cobranza y Registro"
+          echo "Los cuatro módulos están presentes."
+
+          # Verifica que Gradle reconozca los módulos declarados.
+          gradle --no-daemon -p "$PROYECTO_DIR" projects
+
+      - name: Verificar archivos de Registro de Clientes
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/apk_final"
+
+          REGISTRO="$PROYECTO_DIR/registro-app"
+
+          for ARCHIVO in index.html app.js styles.css config.js manifest.webmanifest; do
+            if [[ ! -f "$REGISTRO/src/main/assets/registro-web/$ARCHIVO" ]]; then
+              echo "::error::Falta registro-app/src/main/assets/registro-web/$ARCHIVO"
+              exit 1
+            fi
+          done
+
+          echo "Los archivos web de Registro de Clientes están presentes."
+
+      - name: Compilar las cuatro aplicaciones Android
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SALIDA="$RUNNER_TEMP/apk_final"
+          mkdir -p "$SALIDA"
+
           for MODULO in gestor-app panel-apk cobranza-app registro-app; do
             echo "======================================"
             echo "Compilando: $MODULO"
             echo "======================================"
+
             gradle --no-daemon -p "$PROYECTO_DIR" ":$MODULO:assembleDebug"
+
             CARPETA="$PROYECTO_DIR/$MODULO/build/outputs/apk"
-            APK="$(find "$CARPETA" -type f -name '*.apk' -path '*/debug/*' -print -quit 2>/dev/null || true)"
-            if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+
+            APK="$(
+              find "$CARPETA" \
+                -type f -name '*.apk' -path '*/debug/*' \
+                -print -quit 2>/dev/null || true
+            )"
+
+            if [[ -z "$APK" || ! -f "$APK" ]]; then
               echo "::error::No se generó la APK de $MODULO."
-              find "$PROYECTO_DIR/$MODULO/build/outputs" -maxdepth 5 -type f -print 2>/dev/null || true
+
+              find "$PROYECTO_DIR/$MODULO/build/outputs" \
+                -maxdepth 6 -type f -print 2>/dev/null || true
+
               exit 1
             fi
+
             case "$MODULO" in
-              gestor-app) NOMBRE="DENTAL-JG-Gestor.apk" ;;
-              panel-apk) NOMBRE="DENTAL-JG-Panel-Administrativo.apk" ;;
-              cobranza-app) NOMBRE="DENTAL-JG-Cobranza-Recibos.apk" ;;
-              registro-app) NOMBRE="DENTAL-JG-Registro-de-Clientes.apk" ;;
+              gestor-app)
+                NOMBRE="DENTAL-JG-Gestor.apk"
+                ;;
+              panel-apk)
+                NOMBRE="DENTAL-JG-Panel-Administrativo.apk"
+                ;;
+              cobranza-app)
+                NOMBRE="DENTAL-JG-Cobranza-Recibos.apk"
+                ;;
+              registro-app)
+                NOMBRE="DENTAL-JG-Registro-de-Clientes.apk"
+                ;;
             esac
-            cp "$APK" "$RUNNER_TEMP/apk_final/$NOMBRE"
-            echo "Generada: $NOMBRE"
+
+            cp "$APK" "$SALIDA/$NOMBRE"
+            echo "APK generada: $NOMBRE"
           done
-          echo "Las cuatro APK Android se generaron correctamente."
+
+          echo "Se generaron las cuatro APK."
 
       - name: Publicar las cuatro APK
         uses: actions/upload-artifact@v4
@@ -159,4 +264,3 @@ jobs:
           path: ${{ runner.temp }}/apk_final/*.apk
           if-no-files-found: error
           retention-days: 14
-          
