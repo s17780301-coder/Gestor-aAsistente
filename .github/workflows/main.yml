@@ -1,11 +1,6 @@
-name: Compilar DENTAL JG - Todas las aplicaciones
+name: Compilar DENTAL JG - Flujo manual seguro
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "*.zip"
-      - ".github/workflows/main.yml"
   workflow_dispatch:
 
 permissions:
@@ -17,7 +12,7 @@ concurrency:
 
 jobs:
   build:
-    name: Localizar proyecto Android y compilar APK
+    name: Validar ZIP y compilar APK
     runs-on: ubuntu-latest
 
     steps:
@@ -30,12 +25,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Preparar Gradle
+      - name: Preparar Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
 
-      - name: Encontrar ZIP que realmente contenga un proyecto Gradle
+      - name: Localizar ZIP que contenga un proyecto Gradle
         shell: bash
         run: |
           set -euo pipefail
@@ -47,26 +42,26 @@ jobs:
             n=$((n + 1))
             destino="$RUNNER_TEMP/candidatos/zip-$n"
             mkdir -p "$destino"
-            echo "Revisando archivo: $zipfile"
+            echo "Revisando ZIP: $zipfile"
 
             if ! unzip -q "$zipfile" -d "$destino"; then
               echo "Aviso: no se pudo extraer $zipfile; se omite."
               continue
             fi
 
-            settings="$(find "$destino" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)"
-            if [ -n "$settings" ] && find "$(dirname "$settings")" -maxdepth 3 -type f \( -name build.gradle -o -name build.gradle.kts \) -print -quit | grep -q .; then
-              elegido="$destino"
-              echo "Proyecto Gradle encontrado en $settings"
-              break
-            fi
-            echo "No contiene un proyecto Gradle válido: $zipfile"
+            while IFS= read -r -d '' settings; do
+              project_dir="$(dirname "$settings")"
+              if find "$project_dir" -maxdepth 2 -type f \( -name build.gradle -o -name build.gradle.kts \) -print -quit | grep -q .; then
+                elegido="$project_dir"
+                echo "Proyecto Gradle válido: $settings"
+                break 2
+              fi
+            done < <(find "$destino" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print0)
           done < <(find . -maxdepth 1 -type f -iname '*.zip' -print0 | sort -z)
 
           if [ -z "$elegido" ]; then
-            echo "::error::No hay ningún ZIP en la raíz que contenga settings.gradle/settings.gradle.kts y build.gradle/build.gradle.kts."
-            echo "El ZIP del panel web no es un proyecto Android. Sube el ZIP maestro de las aplicaciones Android a la raíz de este repositorio y vuelve a ejecutar el flujo."
-            echo "ZIP encontrados:"
+            echo "::error::No se encontró ningún ZIP raíz con un proyecto Gradle válido."
+            echo "ZIP disponibles:"
             find . -maxdepth 1 -type f -iname '*.zip' -printf ' - %f (%s bytes)\n' || true
             exit 1
           fi
@@ -105,7 +100,7 @@ jobs:
       - name: Guardar APK para descargar
         uses: actions/upload-artifact@v4
         with:
-          name: DENTAL-JG-APKs
+          name: DENTAL-JG-APKs-manual
           path: proyecto/**/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 14
