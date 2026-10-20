@@ -1,0 +1,146 @@
+name: Publicar panel DENTAL JG v1.0
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Encontrar y extraer ZIP del sistema o del panel
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dental_archives" public
+          WORK="$RUNNER_TEMP/dental_archives"
+          FOUND_PANEL=""
+
+          # Primero usa los archivos web ya extraídos si están completos.
+          valid_panel_dir() {
+            local d="$1"
+            [[ -s "$d/index.html" && -s "$d/styles.css" && -s "$d/app.js" && -s "$d/config.js" && -s "$d/users.js" && -s "$d/logo-dental-jg.png" ]]
+          }
+
+          if valid_panel_dir "$GITHUB_WORKSPACE"; then
+            FOUND_PANEL="$GITHUB_WORKSPACE"
+          fi
+
+          # Revisa todos los ZIP del repositorio, sin exigir un nombre único.
+          # Prioridad: ZIP v1.0, ZIPs de panel, y después ZIP completo del sistema.
+          if [[ -z "$FOUND_PANEL" ]]; then
+            mapfile -t ZIPS < <(find "$GITHUB_WORKSPACE" -type d \( -name .git -o -name .github \) -prune -o -type f -iname '*.zip' -print | awk '
+              /DENTAL_JG_PANEL_1\.0\.zip$/ {print "0 " $0; next}
+              /DENTAL_JG_PANEL.*\.zip$/ {print "1 " $0; next}
+              /DENTAL_JG.*\.zip$/ {print "2 " $0; next}
+              {print "3 " $0}' | sort -k1,1 -k2,2 | cut -d' ' -f2-)
+
+            if [[ ${#ZIPS[@]} -eq 0 ]]; then
+              echo "::error::No se encontró ningún ZIP en el repositorio. Sube el ZIP completo sin descomprimirlo."
+              exit 1
+            fi
+
+            round=0
+            for archive in "${ZIPS[@]}"; do
+              [[ -s "$archive" ]] || continue
+              round=$((round + 1))
+              target="$WORK/archive_$round"
+              mkdir -p "$target"
+              echo "Revisando archivo: ${archive#"$GITHUB_WORKSPACE"/}"
+              if ! unzip -tq "$archive"; then
+                echo "::warning::ZIP inválido, se omite: $archive"
+                continue
+              fi
+              unzip -oq "$archive" -d "$target" || continue
+
+              # Algunos ZIP completos contienen otro ZIP del panel web.
+              nested_round=0
+              while IFS= read -r -d '' nested; do
+                nested_round=$((nested_round + 1))
+                [[ $nested_round -le 30 ]] || break
+                nested_target="$target/nested_$nested_round"
+                mkdir -p "$nested_target"
+                if unzip -tq "$nested" >/dev/null 2>&1; then
+                  unzip -oq "$nested" -d "$nested_target" || true
+                fi
+              done < <(find "$target" -type f -iname '*.zip' -not -path '*/nested_*/*' -print0)
+
+              while IFS= read -r -d '' candidate; do
+                dir="$(dirname "$candidate")"
+                if valid_panel_dir "$dir"; then
+                  FOUND_PANEL="$dir"
+                  break 2
+                fi
+              done < <(find "$target" -type f -name index.html -print0)
+            done
+          fi
+
+          if [[ -z "$FOUND_PANEL" ]]; then
+            echo "::error::Se encontraron ZIPs, pero ninguno contiene juntos index.html, styles.css, app.js, config.js, users.js y logo-dental-jg.png."
+            echo "ZIPs presentes en el repositorio:"
+            find "$GITHUB_WORKSPACE" -type f -iname '*.zip' -not -path '*/.git/*' -printf '%P\n' || true
+            echo "Archivos web detectados dentro de las extracciones:"
+            find "$WORK" -type f \( -name index.html -o -name users.js -o -name app.js -o -name styles.css \) -printf '%P\n' | head -150 || true
+            exit 1
+          fi
+
+          echo "Panel web localizado en: $FOUND_PANEL"
+          cp "$FOUND_PANEL/index.html" "$FOUND_PANEL/styles.css" "$FOUND_PANEL/app.js" "$FOUND_PANEL/config.js" "$FOUND_PANEL/users.js" "$FOUND_PANEL/logo-dental-jg.png" public/
+
+          # Versión discreta al pie: no es marca de agua ni elemento flotante.
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path('public/index.html')
+          css = Path('public/styles.css')
+          source = html.read_text(encoding='utf-8')
+          if 'Versión 1.0' not in source and 'Version 1.0' not in source:
+              footer = '\n<footer class="dental-version-footer" aria-label="Versión del sistema">DENTAL JG · Versión 1.0</footer>\n'
+              if '</body>' in source:
+                  source = source.replace('</body>', footer + '</body>', 1)
+              else:
+                  source += footer
+              html.write_text(source, encoding='utf-8')
+          styles = css.read_text(encoding='utf-8')
+          if '.dental-version-footer' not in styles and '.version-label' not in styles:
+              styles += '\n\n/* Identificador discreto de versión; al final del documento, no como marca de agua. */\n.dental-version-footer{display:block;width:100%;box-sizing:border-box;padding:10px 14px 14px;margin:24px 0 0;text-align:center;font-size:11px;line-height:1.4;letter-spacing:.04em;color:#6f8b8b;opacity:.85;background:transparent;position:static;pointer-events:none}\n'
+              css.write_text(styles, encoding='utf-8')
+          PY
+
+          touch public/.nojekyll
+          for f in index.html styles.css app.js config.js users.js logo-dental-jg.png; do
+            test -s "public/$f" || { echo "::error::No se preparó $f"; exit 1; }
+          done
+          echo "Archivos preparados para Pages:"
+          find public -maxdepth 2 -type f -printf '%P (%s bytes)\n' | sort
+
+      - name: Subir artefacto de Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
