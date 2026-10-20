@@ -1,10 +1,8 @@
-
 name: Compilar DENTAL JG - Todas las aplicaciones
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "*.zip"
       - ".github/workflows/main.yml"
@@ -19,7 +17,7 @@ concurrency:
 
 jobs:
   build:
-    name: Compilar aplicaciones Android
+    name: Localizar proyecto Android y compilar APK
     runs-on: ubuntu-latest
 
     steps:
@@ -37,46 +35,54 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Extraer proyecto Android
+      - name: Encontrar ZIP que realmente contenga un proyecto Gradle
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/candidatos" proyecto
+          elegido=""
+          n=0
 
-          mkdir -p proyecto
+          while IFS= read -r -d '' zipfile; do
+            n=$((n + 1))
+            destino="$RUNNER_TEMP/candidatos/zip-$n"
+            mkdir -p "$destino"
+            echo "Revisando archivo: $zipfile"
 
-          ZIP="$(find . -maxdepth 1 -type f -iname '*.zip' \
-            ! -name 'DENTAL_JG_PANEL*' -print -quit)"
+            if ! unzip -q "$zipfile" -d "$destino"; then
+              echo "Aviso: no se pudo extraer $zipfile; se omite."
+              continue
+            fi
 
-          if [ -z "$ZIP" ]; then
-            echo "::error::No se encontró un ZIP de las aplicaciones Android."
-            echo "El ZIP del panel web no sirve para compilar APK."
+            settings="$(find "$destino" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)"
+            if [ -n "$settings" ] && find "$(dirname "$settings")" -maxdepth 3 -type f \( -name build.gradle -o -name build.gradle.kts \) -print -quit | grep -q .; then
+              elegido="$destino"
+              echo "Proyecto Gradle encontrado en $settings"
+              break
+            fi
+            echo "No contiene un proyecto Gradle válido: $zipfile"
+          done < <(find . -maxdepth 1 -type f -iname '*.zip' -print0 | sort -z)
+
+          if [ -z "$elegido" ]; then
+            echo "::error::No hay ningún ZIP en la raíz que contenga settings.gradle/settings.gradle.kts y build.gradle/build.gradle.kts."
+            echo "El ZIP del panel web no es un proyecto Android. Sube el ZIP maestro de las aplicaciones Android a la raíz de este repositorio y vuelve a ejecutar el flujo."
+            echo "ZIP encontrados:"
+            find . -maxdepth 1 -type f -iname '*.zip' -printf ' - %f (%s bytes)\n' || true
             exit 1
           fi
 
-          echo "ZIP Android seleccionado: $ZIP"
-          unzip -q "$ZIP" -d proyecto
-
-          SETTINGS="$(find proyecto -type f \
-            \( -name settings.gradle -o -name settings.gradle.kts \) \
-            -print -quit)"
-
-          if [ -z "$SETTINGS" ]; then
-            echo "::error::El ZIP no contiene un proyecto Android Gradle."
-            echo "Contenido encontrado:"
-            find proyecto -maxdepth 4 -type f | head -n 100
-            exit 1
-          fi
-
-          PROJECT_DIR="$(dirname "$SETTINGS")"
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Proyecto Gradle encontrado: $PROJECT_DIR"
+          cp -a "$elegido"/. proyecto/
+          settings="$(find proyecto -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)"
+          test -n "$settings"
+          project_dir="$(dirname "$settings")"
+          echo "PROJECT_DIR=$project_dir" >> "$GITHUB_ENV"
+          echo "Proyecto seleccionado: $project_dir"
 
       - name: Compilar APK
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-
           if [ -f gradlew ]; then
             chmod +x gradlew
             ./gradlew --no-daemon assembleDebug
@@ -88,15 +94,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          find proyecto -type f -path '*/build/outputs/apk/*.apk' \
-            -print > apk-list.txt
-
+          find proyecto -type f -path '*/build/outputs/apk/*.apk' -print > apk-list.txt
           if [ ! -s apk-list.txt ]; then
             echo "::error::La compilación terminó sin generar APK."
             exit 1
           fi
-
           echo "APK generados:"
           cat apk-list.txt
 
@@ -104,8 +106,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DENTAL-JG-APKs
-          path: |
-            proyecto/**/build/outputs/apk/**/*.apk
+          path: proyecto/**/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 14
-          
