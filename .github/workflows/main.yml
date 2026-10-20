@@ -1,71 +1,66 @@
-name: Publicar panel DENTAL JG
-
+name: Publicar panel DENTAL JG v1.0
 on:
-  workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/deploy.yml"
-      - "index.html"
-      - "app.js"
-      - "config.js"
-      - "users.js"
-      - "styles.css"
-      - "logo-dental-jg.png"
-      - "assets/**"
-      - "images/**"
-
+  workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
-  group: github-pages
+  group: pages
   cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
-      - name: Validar archivos del panel
+
+      - name: Verificar y extraer DENTAL JG v1.0
         shell: bash
         run: |
           set -euo pipefail
-          for f in index.html styles.css app.js config.js users.js logo-dental-jg.png; do
-            test -s "$f" || { echo "::error::Falta archivo obligatorio: $f"; exit 1; }
-          done
-          grep -q 'app.js?v=10.8.99' index.html || { echo "::error::index.html no referencia el paquete 10.8.99"; exit 1; }
-          grep -q 'register_dental_jg_payment' app.js || { echo "::error::No se encontró la operación transaccional de pagos"; exit 1; }
-          grep -q 'No se hizo INSERT alternativo' app.js || { echo "::error::Falta protección frente a INSERT alternativo de pagos"; exit 1; }
-          grep -q 'administrar-usuarios' users.js || { echo "::error::No se encontró el módulo de administración de usuarios"; exit 1; }
-          echo "Validación básica completada."
-      - name: Preparar sitio
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p public
-          cp index.html styles.css app.js config.js users.js logo-dental-jg.png public/
-          for item in assets images css js; do
-            [ ! -e "$item" ] || cp -a "$item" public/
-          done
-          touch public/.nojekyll
+          ZIP="DENTAL_JG_PANEL_1.0.zip"
+          if [[ ! -s "$ZIP" ]]; then
+            echo "ERROR: No existe $ZIP en la raíz del repositorio. No se publicará otra versión."
+            exit 1
+          fi
+          mkdir -p extracted public
+          unzip -t "$ZIP"
+          unzip -o "$ZIP" -d extracted
+          required=(index.html styles.css app.js config.js users.js logo-dental-jg.png)
+          PANEL_DIR=""
+          while IFS= read -r -d '' candidate; do
+            dir="$(dirname "$candidate")"
+            valid=1
+            for file in "${required[@]}"; do
+              [[ -s "$dir/$file" ]] || valid=0
+            done
+            if [[ "$valid" == 1 ]]; then PANEL_DIR="$dir"; break; fi
+          done < <(find extracted -type f -name index.html -print0)
+          if [[ -z "$PANEL_DIR" ]]; then
+            echo "ERROR: El ZIP 1.0 no contiene todos los archivos requeridos."
+            find extracted -type f | sort
+            exit 1
+          fi
+          cp "$PANEL_DIR"/{index.html,styles.css,app.js,config.js,users.js,logo-dental-jg.png} public/
+          echo "Contenido que se publicará desde DENTAL_JG_PANEL_1.0.zip:"
+          sha256sum public/*
           test -s public/index.html
-          echo "Archivos listos para publicar:"
-          find public -maxdepth 4 -type f -printf '%P\n' | sort
+
       - name: Subir artefacto de Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
+
   deploy:
-    needs: build
-    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
     steps:
-      - name: Publicar página
+      - name: Publicar GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
