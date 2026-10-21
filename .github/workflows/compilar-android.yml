@@ -112,17 +112,27 @@ jobs:
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Preparar Pillow para iconos transparentes
-        if: steps.project.outputs.mode == 'source'
-        shell: bash
-        run: python3 -m pip install --quiet Pillow
-
       - name: Aplicar firma estable y subir versiones Android
         if: steps.project.outputs.mode == 'source'
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+
+          root = Path(os.environ['ANDROID_PROJECT_DIR'])
+          official_logo = root / 'panel-apk' / 'src' / 'main' / 'assets' / 'logo-dental-jg.png'
+          if not official_logo.is_file():
+              raise SystemExit(f"Falta el logotipo oficial transparente: {official_logo}")
+          logo_targets = {
+              'Gestor': root / 'gestor-app' / 'src' / 'main' / 'res' / 'drawable-nodpi' / 'dental_jg_logo.png',
+              'Registro de clientes': root / 'registro-app' / 'src' / 'main' / 'assets' / 'registro-web' / 'logo-dental-jg.png',
+              'Cobranza': root / 'cobranza-app' / 'src' / 'main' / 'assets' / 'logo-dental-jg.png',
+          }
+          logo_bytes = official_logo.read_bytes()
+
+       python3 - <<'PY'
           from pathlib import Path
           import os, re
 
