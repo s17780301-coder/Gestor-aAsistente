@@ -118,7 +118,7 @@ jobs:
               if not gradle.is_file():
                   raise SystemExit(f"Falta el archivo {gradle}")
               text = gradle.read_text(encoding='utf-8')
-              code_match = re.search(r'\\bversionCode\\s+(\\d+)', text)
+              code_match = re.search(r'\bversionCode\s+(\d+)', text)
               if not code_match:
                   raise SystemExit(f"No existe versionCode en {module}")
               current_code = int(code_match.group(1))
@@ -128,7 +128,7 @@ jobs:
                   updated = text
               else:
                   raise SystemExit(f"versionCode inesperado en {module}: {current_code}; se esperaba {old_code} o {new_code}")
-              updated, n_name = re.subn(r"\\bversionName\\s+['\"][^'\"]+['\"]", "versionName '1.0'", updated, count=1)
+              updated, n_name = re.subn(r"\bversionName\s+['\"][^'\"]+['\"]", "versionName '1.0'", updated, count=1)
               if n_name != 1:
                   raise SystemExit(f"No se pudo actualizar versionName en {module}")
               signing = """
