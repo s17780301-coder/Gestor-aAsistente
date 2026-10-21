@@ -112,6 +112,11 @@ jobs:
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Preparar Pillow para iconos transparentes
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: python3 -m pip install --quiet Pillow
+
       - name: Aplicar firma estable y subir versiones Android
         if: steps.project.outputs.mode == 'source'
         shell: bash
@@ -131,6 +136,57 @@ jobs:
               'Cobranza': root / 'cobranza-app' / 'src' / 'main' / 'assets' / 'logo-dental-jg.png',
           }
           logo_bytes = official_logo.read_bytes()
+
+          # Corregir el ICONO DEL LANZADOR (no solo el logo dentro de cada pantalla).
+          # Se usa el PNG oficial conservando transparencia y se reemplazan los recursos
+          # reales que Android empaqueta como icono de la aplicación.
+          try:
+              from PIL import Image
+          except ImportError:
+              raise SystemExit("Falta Pillow para generar los iconos Android con transparencia")
+          from io import BytesIO
+
+          logo = Image.open(BytesIO(logo_bytes)).convert("RGBA")
+          icon_modules = ["gestor-app", "registro-app", "cobranza-app", "panel-apk"]
+          for module in icon_modules:
+              res = root / module / "src" / "main" / "res"
+              if not res.is_dir():
+                  raise SystemExit(f"Faltan recursos Android de {module}: {res}")
+              launcher_pngs = []
+              for p in res.glob("mipmap-*/*"):
+                  if p.is_file() and p.suffix.lower() == ".png" and p.stem in {"ic_launcher", "ic_launcher_round"}:
+                      launcher_pngs.append(p)
+              for p in launcher_pngs:
+                  m = re.search(r"mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)", p.parent.name)
+                  px = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}.get(m.group(1) if m else "", 96)
+                  canvas = Image.new("RGBA", (px, px), (0, 0, 0, 0))
+                  art = logo.copy()
+                  art.thumbnail((int(px * 0.78), int(px * 0.78)), Image.Resampling.LANCZOS)
+                  canvas.alpha_composite(art, ((px - art.width) // 2, (px - art.height) // 2))
+                  canvas.save(p, format="PNG", optimize=True)
+                  print(f"{module}: icono transparente actualizado: {p.relative_to(root)} ({px}x{px})")
+              # Los iconos adaptativos Android 8+ usan un foreground independiente.
+              # Redirigirlo a un recurso PNG transparente propio sin destruir el fondo XML.
+              for xml in res.glob("mipmap-anydpi-v*/ic_launcher*.xml"):
+                  try:
+                      xml_text = xml.read_text(encoding="utf-8")
+                  except (UnicodeDecodeError, OSError):
+                      continue
+                  if "foreground" not in xml_text:
+                      continue
+                  foreground = res / "drawable-nodpi" / "dental_jg_launcher_foreground.png"
+                  foreground.parent.mkdir(parents=True, exist_ok=True)
+                  fg = Image.new("RGBA", (432, 432), (0, 0, 0, 0))
+                  art = logo.copy()
+                  art.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                  fg.alpha_composite(art, ((432 - art.width) // 2, (432 - art.height) // 2))
+                  fg.save(foreground, format="PNG", optimize=True)
+                  xml_text, changed = re.subn(r'(<foreground[^>]*android:drawable=")@drawable/[^"]+(")', r'\\1@drawable/dental_jg_launcher_foreground\\2', xml_text)
+                  if changed:
+                      xml.write_text(xml_text, encoding="utf-8")
+                      print(f"{module}: foreground adaptativo corregido: {xml.relative_to(root)}")
+              if not launcher_pngs and not list(res.glob("mipmap-anydpi-v*/ic_launcher*.xml")):
+                  print(f"AVISO: {module} no tiene recursos ic_launcher reconocibles; revisar Manifest y recursos: {res}")
           for app_name, target in logo_targets.items():
               if not target.parent.is_dir():
                   raise SystemExit(f"No existe la carpeta del logotipo de {app_name}: {target.parent}")
