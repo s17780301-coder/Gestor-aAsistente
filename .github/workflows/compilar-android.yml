@@ -128,7 +128,7 @@ jobs:
               'gestor-app': (17, 18),
               'cobranza-app': (3, 4),
               'registro-app': (3, 4),
-              'panel-apk': (5, 6),
+              'panel-apk': (6, 7),
           }
           for module, (old_code, new_code) in version_updates.items():
               gradle = root / module / 'build.gradle'
@@ -165,7 +165,11 @@ jobs:
               }
           }
           """
-              gradle.write_text(updated.rstrip() + "\n\n" + signing.lstrip(), encoding='utf-8')
+              if re.search(r"stableDebug\\s*\\{", updated):
+                  # El módulo Administración ya define la firma estable: no duplicarla.
+                  gradle.write_text(updated.rstrip() + "\n", encoding='utf-8')
+              else:
+                  gradle.write_text(updated.rstrip() + "\n\n" + signing.lstrip(), encoding='utf-8')
               print(f"{module}: versionCode {new_code}, versionName 1.0, firma estable compartida")
           key = root / 'panel-apk' / 'dentaljg-debug.keystore'
           if not key.is_file():
@@ -190,7 +194,7 @@ jobs:
           test -x "$AAPT"
           declare -A EXPECTED
           EXPECTED[gestor-app]="com.example.gestoriaasistente 18 1.0"
-          EXPECTED[panel-apk]="com.example.dentaljgadmin 6 1.0"
+          EXPECTED[panel-apk]="com.example.dentaljgadmin 7 1.0"
           EXPECTED[cobranza-app]="com.example.dentaljgcobranza 4 1.0"
           EXPECTED[registro-app]="com.example.dentaljgregistro 4 1.0"
           CERT_EXPECTED="c3ea80a5b17f24e7677ea49be5b176b8196b306c35fd8249d8c8fc507338efef"
