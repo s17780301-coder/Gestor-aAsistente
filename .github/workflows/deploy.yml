@@ -42,14 +42,13 @@ jobs:
             FOUND_PANEL="$GITHUB_WORKSPACE"
           fi
 
-          # Revisa todos los ZIP del repositorio, sin exigir un nombre único.
-          # Prioridad: ZIP v1.0, ZIPs de panel, y después ZIP completo del sistema.
+          # Este flujo publica SOLO el panel web. Ignora ZIP de Android para no confundirlos.
           if [[ -z "$FOUND_PANEL" ]]; then
             mapfile -t ZIPS < <(find "$GITHUB_WORKSPACE" -type d \( -name .git -o -name .github \) -prune -o -type f -iname '*.zip' -print | awk '
               /DENTAL_JG_PANEL_1\.0\.zip$/ {print "0 " $0; next}
               /DENTAL_JG_PANEL.*\.zip$/ {print "1 " $0; next}
-              /DENTAL_JG.*\.zip$/ {print "2 " $0; next}
-              {print "3 " $0}' | sort -k1,1 -k2,2 | cut -d' ' -f2-)
+              /DENTAL_JG.*(PANEL|WEB|ADMIN).*\.zip$/ {print "2 " $0; next}
+              {next}' | sort -k1,1 -k2,2 | cut -d' ' -f2-)
 
             if [[ ${#ZIPS[@]} -eq 0 ]]; then
               echo "::error::No se encontró ningún ZIP en el repositorio. Sube el ZIP completo sin descomprimirlo."
