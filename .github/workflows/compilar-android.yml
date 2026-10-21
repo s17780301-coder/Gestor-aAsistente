@@ -25,8 +25,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Instalar Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Preparar Android SDK preinstalado
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            SDKMANAGER="$SDK_ROOT/cmdline-tools/16.0/bin/sdkmanager"
+          fi
+          "$SDKMANAGER" --version
 
       - name: Instalar Gradle 8.9
         shell: bash
@@ -89,7 +100,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/apks"
-          find "$ANDROID_PROJECT_DIR" -type f -path '*/build/outputs/apk/*/*.apk' -exec cp -v {} "$GITHUB_WORKSPACE/apks/" \;
+          while IFS= read -r -d '' apk; do
+            rel="${apk#"$ANDROID_PROJECT_DIR"/}"
+            module="${rel%%/*}"
+            cp -v "$apk" "$GITHUB_WORKSPACE/apks/${module}-$(basename "$apk")"
+          done < <(find "$ANDROID_PROJECT_DIR" -type f -path '*/build/outputs/apk/*/*.apk' -print0)
           if [[ -z "$(find "$GITHUB_WORKSPACE/apks" -type f -name '*.apk' -print -quit)" ]]; then
             echo "::error::Gradle terminó pero no se encontró ningún APK generado."
             exit 1
