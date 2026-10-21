@@ -53,10 +53,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/dental_android" "$RUNNER_TEMP/dental_extract"
+          mkdir -p "$RUNNER_TEMP/dental_extract" "$GITHUB_WORKSPACE/apks"
           FOUND=""
+          # Prioriza el ZIP de corrección más reciente y no recompila una versión antigua
+          # si el archivo objetivo contiene el proyecto Gradle.
           while IFS= read -r -d '' archive; do
-            [[ "$archive" == *".git/"* || "$archive" == *".github/"* ]] && continue
             if ! unzip -tq "$archive" >/dev/null 2>&1; then
               echo "::warning::Se omite ZIP dañado: $archive"
               continue
@@ -69,26 +70,24 @@ jobs:
               root="$(dirname "$candidate")"
               if [[ -f "$root/gradle.properties" || -f "$root/build.gradle" || -f "$root/build.gradle.kts" ]]; then
                 FOUND="$root"
-                echo "Proyecto Gradle encontrado en: $FOUND"
+                echo "Proyecto Gradle encontrado en ZIP: $(basename "$archive")"
+                echo "Proyecto Gradle en: $FOUND"
                 break
               fi
             fi
-          done < <(find "$GITHUB_WORKSPACE" -type f -iname '*.zip' -print0)
+          done < <(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname '*.zip' -print0 | sort -z -r)
 
           if [[ -z "$FOUND" ]]; then
-            mkdir -p "$GITHUB_WORKSPACE/apks"
             while IFS= read -r -d '' apk; do
               cp -n "$apk" "$GITHUB_WORKSPACE/apks/$(basename "$apk")"
             done < <(find "$RUNNER_TEMP/dental_extract" -type f -iname '*.apk' -print0)
-
             if [[ -n "$(find "$GITHUB_WORKSPACE/apks" -type f -iname '*.apk' -print -quit)" ]]; then
-              echo "::notice::El ZIP contiene APKs ya compilados, no el código fuente Android. Se publicarán esos APKs existentes; no se recompilarán."
+              echo "::notice::El ZIP contiene APKs ya compilados; no se recompilaron."
               echo "mode=apks" >> "$GITHUB_OUTPUT"
               ls -lh "$GITHUB_WORKSPACE/apks"
               exit 0
             fi
-
-            echo "::error::No encontré código fuente Gradle ni APKs dentro de los ZIP del repositorio. Para recompilar, sube el ZIP fuente con settings.gradle y los módulos Android."
+            echo "::error::No se encontró proyecto Gradle ni APK dentro de los ZIP del repositorio."
             find "$GITHUB_WORKSPACE" -maxdepth 2 -type f -printf '%P\n' | head -100 || true
             exit 1
           fi
@@ -120,11 +119,9 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
+          import os, re
 
-          root = Path(__import__('os').environ['ANDROID_PROJECT_DIR'])
-          # Unificar el logotipo oficial DENTAL JG dentro de las pantallas.
-          # Se usa el PNG turquesa transparente ya incluido en Administración.
+          root = Path(os.environ['ANDROID_PROJECT_DIR'])
           official_logo = root / 'panel-apk' / 'src' / 'main' / 'assets' / 'logo-dental-jg.png'
           if not official_logo.is_file():
               raise SystemExit(f"Falta el logotipo oficial transparente: {official_logo}")
@@ -139,32 +136,30 @@ jobs:
                   raise SystemExit(f"No existe la carpeta del logotipo de {app_name}: {target.parent}")
               target.write_bytes(logo_bytes)
               print(f"{app_name}: logotipo oficial transparente aplicado ({len(logo_bytes)} bytes)")
-          print("Administración: se conserva el logotipo oficial de origen; iconos de instalación sin cambios.")
-          version_updates = {
-              'gestor-app': (17, 18),
-              'cobranza-app': (3, 4),
-              'registro-app': (3, 4),
-              'panel-apk': (7, 8),
-          }
+
+          version_updates = {'gestor-app': (17, 18), 'cobranza-app': (3, 4), 'registro-app': (3, 4), 'panel-apk': (7, 8)}
           for module, (old_code, new_code) in version_updates.items():
               gradle = root / module / 'build.gradle'
               if not gradle.is_file():
                   raise SystemExit(f"Falta el archivo {gradle}")
-              text = gradle.read_text(encoding='utf-8')
-              code_match = re.search(r'\bversionCode\s+(\d+)', text)
+              source = gradle.read_text(encoding='utf-8')
+              code_match = re.search(r'\bversionCode\s+(\d+)', source)
               if not code_match:
                   raise SystemExit(f"No existe versionCode en {module}")
               current_code = int(code_match.group(1))
               if current_code == old_code:
-                  updated = text[:code_match.start(1)] + str(new_code) + text[code_match.end(1):]
+                  updated = source[:code_match.start(1)] + str(new_code) + source[code_match.end(1):]
               elif current_code == new_code:
-                  updated = text
+                  updated = source
               else:
                   raise SystemExit(f"versionCode inesperado en {module}: {current_code}; se esperaba {old_code} o {new_code}")
-              updated, n_name = re.subn(r"\bversionName\s+['\"][^'\"]+['\"]", "versionName '1.0'", updated, count=1)
-              if n_name != 1:
+              updated, count = re.subn(r"\bversionName\s+['\"][^'\"]+['\"]", "versionName '1.0'", updated, count=1)
+              if count != 1:
                   raise SystemExit(f"No se pudo actualizar versionName en {module}")
-              signing = """
+              # Detecta correctamente el bloque existente; evita duplicar signingConfigs.
+              if not re.search(r'\bstableDebug\s*\{', updated):
+                  updated = updated.rstrip() + """
+
           android {
               signingConfigs {
                   stableDebug {
@@ -181,12 +176,8 @@ jobs:
               }
           }
           """
-              if re.search(r"stableDebug\\s*\\{", updated):
-                  # El módulo Administración ya define la firma estable: no duplicarla.
-                  gradle.write_text(updated.rstrip() + "\n", encoding='utf-8')
-              else:
-                  gradle.write_text(updated.rstrip() + "\n\n" + signing.lstrip(), encoding='utf-8')
-              print(f"{module}: versionCode {new_code}, versionName 1.0, firma estable compartida")
+              gradle.write_text(updated.rstrip() + "\n", encoding='utf-8')
+              print(f"{module}: versionCode {new_code}, versionName 1.0")
           key = root / 'panel-apk' / 'dentaljg-debug.keystore'
           if not key.is_file():
               raise SystemExit(f"Falta la clave de firma estable: {key}")
