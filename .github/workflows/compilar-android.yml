@@ -94,38 +94,6 @@ jobs:
           echo "ANDROID_PROJECT_DIR=$FOUND" >> "$GITHUB_ENV"
           echo "mode=source" >> "$GITHUB_OUTPUT"
 
-      - name: Localizar el botón de roles y sus estilos
-        if: steps.project.outputs.mode == 'source'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import os, re
-          root = Path(os.environ["ANDROID_PROJECT_DIR"])
-          exts = {".html", ".htm", ".css", ".js", ".xml", ".kt", ".java"}
-          terms = ("registro de roles", "pacientes", "cobranza", "clínica", "clinica")
-          hits = 0
-          for p in root.rglob("*"):
-              if not p.is_file() or p.suffix.lower() not in exts or any(x in p.parts for x in ("build", ".gradle", "node_modules")):
-                  continue
-              try: lines = p.read_text(encoding="utf-8").splitlines()
-              except (UnicodeDecodeError, OSError): continue
-              matched = [i for i, line in enumerate(lines) if any(t in line.lower() for t in terms)]
-              if not matched: continue
-              print(f"--- SOURCE {p.relative_to(root)} ---")
-              shown = set()
-              for i in matched:
-                  for j in range(max(0, i-2), min(len(lines), i+3)):
-                      if j not in shown:
-                          print(f"{j+1}: {lines[j][:300]}")
-                          shown.add(j)
-                  hits += 1
-                  if hits >= 60:
-                      print("Diagnostic output capped.")
-                      raise SystemExit(0)
-          print(f"Diagnostic matches: {hits}")
-          PY
-
       - name: Aceptar licencias e instalar plataformas necesarias
         if: steps.project.outputs.mode == 'source'
         shell: bash
@@ -150,21 +118,6 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          from pathlib import Path
-          import os, re
-
-          root = Path(os.environ['ANDROID_PROJECT_DIR'])
-          official_logo = root / 'panel-apk' / 'src' / 'main' / 'assets' / 'logo-dental-jg.png'
-          if not official_logo.is_file():
-              raise SystemExit(f"Falta el logotipo oficial transparente: {official_logo}")
-          logo_targets = {
-              'Gestor': root / 'gestor-app' / 'src' / 'main' / 'res' / 'drawable-nodpi' / 'dental_jg_logo.png',
-              'Registro de clientes': root / 'registro-app' / 'src' / 'main' / 'assets' / 'registro-web' / 'logo-dental-jg.png',
-              'Cobranza': root / 'cobranza-app' / 'src' / 'main' / 'assets' / 'logo-dental-jg.png',
-          }
-          logo_bytes = official_logo.read_bytes()
-
-       python3 - <<'PY'
           from pathlib import Path
           import os, re
 
