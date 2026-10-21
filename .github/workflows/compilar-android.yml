@@ -197,6 +197,35 @@ jobs:
           print("Formulario de cuenta actualizado: correo editable, validación y mensajes reales de guardado.")
           PY
 
+      - name: Mostrar el error real de inicio de sesión en Admon
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ["ANDROID_PROJECT_DIR"])
+          app = root / "panel-apk" / "src" / "main" / "assets" / "app.js"
+          if not app.is_file():
+              raise SystemExit("No se encontró app.js de Admon.")
+          source = app.read_text(encoding="utf-8")
+          old = "if(error){msg('No se pudo iniciar sesión. Verifica correo y contraseña.');return;}"
+          new = "if(error){msg('No se pudo iniciar sesión: '+(error.message||'Supabase rechazó las credenciales')+(error.status?' (HTTP '+error.status+')':''));return;}"
+          if old in source:
+              source = source.replace(old, new, 1)
+          elif new not in source:
+              raise SystemExit("No se encontró el mensaje esperado de autenticación; no se aplicó un cambio parcial.")
+          needle = "const {error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});"
+          replacement = "let authResult;try{authResult=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});}catch(authError){msg('No se pudo contactar Supabase: '+(authError.message||'revisa la conexión a internet.'));return;}const {error}=authResult;"
+          if needle in source:
+              source = source.replace(needle, replacement, 1)
+          elif replacement not in source:
+              raise SystemExit("No se encontró la llamada esperada al inicio de sesión.")
+          app.write_text(source, encoding="utf-8")
+          print("Admon mostrará el motivo real del rechazo de acceso o un error de conexión.")
+          PY
+
       - name: Aceptar licencias e instalar plataformas necesarias
         if: steps.project.outputs.mode == 'source'
         shell: bash
@@ -276,7 +305,7 @@ jobs:
                   path.write_text(body.replace("1.0.3", "1.0.4"), encoding="utf-8")
 
 
-          version_updates = {'gestor-app': (17, 18), 'cobranza-app': (3, 4), 'registro-app': (3, 4), 'panel-apk': (8, 9)}
+          version_updates = {'gestor-app': (17, 18), 'cobranza-app': (3, 4), 'registro-app': (3, 4), 'panel-apk': (9, 10)}
           for module, (old_code, new_code) in version_updates.items():
               gradle = root / module / 'build.gradle'
               if not gradle.is_file():
@@ -344,7 +373,7 @@ jobs:
           test -x "$AAPT"
           declare -A EXPECTED
           EXPECTED[gestor-app]="com.example.gestoriaasistente 18 1.0.3"
-          EXPECTED[panel-apk]="com.example.dentaljgadmin 9 1.0.4"
+          EXPECTED[panel-apk]="com.example.dentaljgadmin 10 1.0.4"
           EXPECTED[cobranza-app]="com.example.dentaljgcobranza 4 1.0.3"
           EXPECTED[registro-app]="com.example.dentaljgregistro 4 1.0.3"
           CERT_EXPECTED="c3ea80a5b17f24e7677ea49be5b176b8196b306c35fd8249d8c8fc507338efef"
