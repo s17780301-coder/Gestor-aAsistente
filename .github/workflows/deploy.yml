@@ -3,9 +3,17 @@ name: Publicar panel DENTAL JG v1.0
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '**.zip'
-      - '**/*.zip'
+    paths:
+      - 'DENTAL_JG_PANEL*.zip'
+      - 'DENTAL_JG*PANEL*.zip'
+      - 'DENTAL_JG*WEB*.zip'
+      - 'DENTAL_JG*ADMIN*.zip'
+      - 'index.html'
+      - 'styles.css'
+      - 'app.js'
+      - 'config.js'
+      - 'users.js'
+      - 'logo-dental-jg.png'
   workflow_dispatch:
 
 permissions:
@@ -20,6 +28,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      panel_found: ${{ steps.prepare_panel.outputs.panel_found }}
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -28,6 +38,7 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Encontrar y extraer ZIP del sistema o del panel
+        id: prepare_panel
         shell: bash
         run: |
           set -euo pipefail
@@ -54,8 +65,9 @@ jobs:
               {next}' | sort -k1,1 -k2,2 | cut -d' ' -f2-)
 
             if [[ ${#ZIPS[@]} -eq 0 ]]; then
-              echo "::error::No se encontró ningún ZIP en el repositorio. Sube el ZIP completo sin descomprimirlo."
-              exit 1
+              echo "panel_found=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::No hay un ZIP de panel web en este repositorio; se omite la publicación. La compilación Android usa un flujo separado."
+              exit 0
             fi
 
             round=0
@@ -94,16 +106,18 @@ jobs:
           fi
 
           if [[ -z "$FOUND_PANEL" ]]; then
-            echo "::error::Se encontraron ZIPs, pero ninguno contiene juntos index.html, styles.css, app.js, config.js, users.js y logo-dental-jg.png."
+            echo "panel_found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Los archivos disponibles no contienen el paquete web completo requerido; se omite la publicación sin afectar la compilación Android."
             echo "ZIPs presentes en el repositorio:"
             find "$GITHUB_WORKSPACE" -type f -iname '*.zip' -not -path '*/.git/*' -printf '%P\n' || true
             echo "Archivos web detectados dentro de las extracciones:"
             find "$WORK" -type f \( -name index.html -o -name users.js -o -name app.js -o -name styles.css \) -printf '%P\n' | head -150 || true
-            exit 1
+            exit 0
           fi
 
           echo "Panel web localizado en: $FOUND_PANEL"
           cp "$FOUND_PANEL/index.html" "$FOUND_PANEL/styles.css" "$FOUND_PANEL/app.js" "$FOUND_PANEL/config.js" "$FOUND_PANEL/users.js" "$FOUND_PANEL/logo-dental-jg.png" public/
+          echo "panel_found=true" >> "$GITHUB_OUTPUT"
 
           # Versión discreta al pie: no es marca de agua ni elemento flotante.
           python3 - <<'PY'
@@ -132,12 +146,14 @@ jobs:
           find public -maxdepth 2 -type f -printf '%P (%s bytes)\n' | sort
 
       - name: Subir artefacto de Pages
+        if: steps.prepare_panel.outputs.panel_found == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
   deploy:
     needs: build
+    if: needs.build.outputs.panel_found == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
