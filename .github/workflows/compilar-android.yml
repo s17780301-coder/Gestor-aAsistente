@@ -107,6 +107,23 @@ jobs:
           import re
 
           root = Path(__import__('os').environ['ANDROID_PROJECT_DIR'])
+          # Unificar el logotipo oficial DENTAL JG dentro de las pantallas.
+          # Se usa el PNG turquesa transparente ya incluido en Administración.
+          official_logo = root / 'panel-apk' / 'src' / 'main' / 'assets' / 'logo-dental-jg.png'
+          if not official_logo.is_file():
+              raise SystemExit(f"Falta el logotipo oficial transparente: {official_logo}")
+          logo_targets = {
+              'Gestor': root / 'gestor-app' / 'src' / 'main' / 'res' / 'drawable-nodpi' / 'dental_jg_logo.png',
+              'Registro de clientes': root / 'registro-app' / 'src' / 'main' / 'assets' / 'registro-web' / 'logo-dental-jg.png',
+              'Cobranza': root / 'cobranza-app' / 'src' / 'main' / 'assets' / 'logo-dental-jg.png',
+          }
+          logo_bytes = official_logo.read_bytes()
+          for app_name, target in logo_targets.items():
+              if not target.parent.is_dir():
+                  raise SystemExit(f"No existe la carpeta del logotipo de {app_name}: {target.parent}")
+              target.write_bytes(logo_bytes)
+              print(f"{app_name}: logotipo oficial transparente aplicado ({len(logo_bytes)} bytes)")
+          print("Administración: se conserva el logotipo oficial de origen; iconos de instalación sin cambios.")
           version_updates = {
               'gestor-app': (17, 18),
               'cobranza-app': (3, 4),
