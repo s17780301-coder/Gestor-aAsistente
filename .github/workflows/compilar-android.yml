@@ -1,0 +1,105 @@
+name: Compilar APKs DENTAL JG desde ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.zip'
+      - '**/*.zip'
+      - '.github/workflows/compilar-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Gradle 8.9
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o "$RUNNER_TEMP/gradle.zip"
+          unzip -q "$RUNNER_TEMP/gradle.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gradle-8.9/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gradle-8.9/bin/gradle" --version
+
+      - name: Encontrar y extraer proyecto Android
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dental_android" "$RUNNER_TEMP/dental_extract"
+          FOUND=""
+          while IFS= read -r -d '' archive; do
+            [[ "$archive" == *".git/"* || "$archive" == *".github/"* ]] && continue
+            if ! unzip -tq "$archive" >/dev/null 2>&1; then
+              echo "::warning::Se omite ZIP dañado: $archive"
+              continue
+            fi
+            target="$RUNNER_TEMP/dental_extract/$(basename "$archive" .zip)"
+            mkdir -p "$target"
+            unzip -oq "$archive" -d "$target"
+            candidate="$(find "$target" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)"
+            if [[ -n "$candidate" ]]; then
+              root="$(dirname "$candidate")"
+              if [[ -f "$root/gradle.properties" || -f "$root/build.gradle" || -f "$root/build.gradle.kts" ]]; then
+                FOUND="$root"
+                echo "Proyecto Gradle encontrado en: $FOUND"
+                break
+              fi
+            fi
+          done < <(find "$GITHUB_WORKSPACE" -type f -iname '*.zip' -print0)
+
+          if [[ -z "$FOUND" ]]; then
+            echo "::error::No encontré un ZIP que contenga settings.gradle y archivos de proyecto Android. Sube el ZIP del proyecto, no el ZIP del panel web."
+            find "$GITHUB_WORKSPACE" -maxdepth 2 -type f -printf '%P\n' | head -100 || true
+            exit 1
+          fi
+          echo "ANDROID_PROJECT_DIR=$FOUND" >> "$GITHUB_ENV"
+
+      - name: Aceptar licencias e instalar plataformas necesarias
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Compilar todos los módulos Android
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$ANDROID_PROJECT_DIR"
+          gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Reunir APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/apks"
+          find "$ANDROID_PROJECT_DIR" -type f -path '*/build/outputs/apk/*/*.apk' -exec cp -v {} "$GITHUB_WORKSPACE/apks/" \;
+          if [[ -z "$(find "$GITHUB_WORKSPACE/apks" -type f -name '*.apk' -print -quit)" ]]; then
+            echo "::error::Gradle terminó pero no se encontró ningún APK generado."
+            exit 1
+          fi
+          ls -lh "$GITHUB_WORKSPACE/apks"
+
+      - name: Guardar APKs como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: DENTAL-JG-APKs-debug
+          path: apks/*.apk
+          if-no-files-found: error
+          retention-days: 14
