@@ -261,7 +261,7 @@ jobs:
                   print(f"Versión visible 1.0.2 -> 1.0.3: {path.relative_to(root)}")
           print(f"Archivos de interfaz con versión corregida: {changed_labels}")
 
-          version_updates = {'gestor-app': (17, 18), 'cobranza-app': (3, 4), 'registro-app': (3, 4), 'panel-apk': (7, 8)}
+          version_updates = {'gestor-app': (17, 18), 'cobranza-app': (3, 4), 'registro-app': (3, 4), 'panel-apk': (8, 9)}
           for module, (old_code, new_code) in version_updates.items():
               gradle = root / module / 'build.gradle'
               if not gradle.is_file():
@@ -327,7 +327,7 @@ jobs:
           test -x "$AAPT"
           declare -A EXPECTED
           EXPECTED[gestor-app]="com.example.gestoriaasistente 18 1.0.3"
-          EXPECTED[panel-apk]="com.example.dentaljgadmin 8 1.0.3"
+          EXPECTED[panel-apk]="com.example.dentaljgadmin 9 1.0.3"
           EXPECTED[cobranza-app]="com.example.dentaljgcobranza 4 1.0.3"
           EXPECTED[registro-app]="com.example.dentaljgregistro 4 1.0.3"
           CERT_EXPECTED="c3ea80a5b17f24e7677ea49be5b176b8196b306c35fd8249d8c8fc507338efef"
