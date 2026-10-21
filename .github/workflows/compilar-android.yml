@@ -423,3 +423,5 @@ jobs:
           path: apks/*.apk
           if-no-files-found: error
           retention-days: 14
+
+# Recompilación de verificación solicitada: incluir los parches de cuenta y diagnóstico de acceso.
