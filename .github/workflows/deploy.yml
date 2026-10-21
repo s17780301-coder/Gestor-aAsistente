@@ -3,6 +3,9 @@ name: Publicar panel DENTAL JG v1.0
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.zip'
+      - '**/*.zip'
   workflow_dispatch:
 
 permissions:
