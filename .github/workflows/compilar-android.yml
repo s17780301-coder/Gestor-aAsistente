@@ -181,7 +181,7 @@ jobs:
                   art.thumbnail((300, 300), Image.Resampling.LANCZOS)
                   fg.alpha_composite(art, ((432 - art.width) // 2, (432 - art.height) // 2))
                   fg.save(foreground, format="PNG", optimize=True)
-                  xml_text, changed = re.subn(r'(<foreground[^>]*android:drawable=")@(?:drawable|mipmap)/[^"]+( ")', r'\1@drawable/dental_jg_launcher_foreground\2', xml_text)
+                  xml_text, changed = re.subn(r'(<foreground[^>]*android:drawable=")@(?:drawable|mipmap)/[^"]+(")', r'\1@drawable/dental_jg_launcher_foreground\2', xml_text)
                   if changed:
                       xml.write_text(xml_text, encoding="utf-8")
                       print(f"{module}: foreground adaptativo corregido: {xml.relative_to(root)}")
