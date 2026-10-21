@@ -149,7 +149,7 @@ jobs:
           }
           """
               gradle.write_text(updated.rstrip() + "\n\n" + signing.lstrip(), encoding='utf-8')
-              print(f"{module}: versionCode {new_code}, versionName {new_name}, firma estable compartida")
+              print(f"{module}: versionCode {new_code}, versionName 1.0, firma estable compartida")
           key = root / 'panel-apk' / 'dentaljg-debug.keystore'
           if not key.is_file():
               raise SystemExit(f"Falta la clave de firma estable: {key}")
