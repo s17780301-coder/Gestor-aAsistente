@@ -147,6 +147,233 @@ jobs:
               raise SystemExit(f"Falta la clave de firma estable: {key}")
           PY
 
+      - name: Corregir SQLite, sincronización y caché
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path(__import__('os').environ['ANDROID_PROJECT_DIR'])
+
+          # Corrige una migración que ejecutaba dos veces el mismo ALTER TABLE.
+          p = root / 'gestor-app/src/main/java/com/example/gestoriaasistente/CustomerDbHelper.java'
+          s = p.read_text(encoding='utf-8')
+          alter = '        if (oldVersion < 6) db.execSQL("ALTER TABLE pacientes ADD COLUMN payment_method TEXT NOT NULL DEFAULT \'efectivo\'");'
+          double_alter = alter + '\\n' + alter
+          if double_alter in s:
+              s = s.replace(double_alter, alter, 1)
+          if s.count(alter) != 1:
+              raise SystemExit('La migración local de payment_method no quedó exactamente una vez.')
+          duplicate_put = 'v.put("payment_method", p.optString("payment_method", "efectivo")); v.put("payment_method", p.optString("payment_method", "efectivo"));'
+          s = s.replace(duplicate_put, 'v.put("payment_method", p.optString("payment_method", "efectivo"));', 1)
+          p.write_text(s, encoding='utf-8')
+
+          # El Gestor solo descarga clientes asignados; no debe intentar altas directas
+          # que el esquema reserva para Registro. Los antiguos quedan locales y se notifican.
+          p = root / 'gestor-app/src/main/java/com/example/gestoriaasistente/SupabaseSync.java'
+          s = p.read_text(encoding='utf-8')
+          if 'import java.util.UUID;' not in s:
+              s = s.replace('import java.nio.charset.StandardCharsets;', 'import java.nio.charset.StandardCharsets;\\nimport java.text.SimpleDateFormat;\\nimport java.util.Locale;\\nimport java.util.TimeZone;\\nimport java.util.UUID;', 1)
+          s = s.replace('    public void sync(CustomerDbHelper db) throws Exception {', '    public String sync(CustomerDbHelper db) throws Exception {', 1)
+          start = s.index('        // Leer primero la nube.')
+          end = s.index('        // 2) Descargar pacientes del panel y actualizar la copia local sin duplicarlos.', start)
+          block = '''        int unlinkedLocalPatients = 0;
+          // Solo Registro de clientes da de alta pacientes en Supabase. En Gestor
+          // únicamente enlazamos filas locales antiguas cuando la coincidencia no es ambigua.
+          JSONArray remotePatients = requestArray("GET", "/rest/v1/patients?select=*&assigned_manager_id=eq." + assignedManager + "&order=created_at.desc", null, jwt, null);
+          Cursor unsynced = local.rawQuery("SELECT id,nombre,telefono,remote_id,numero_poliza,clinica FROM pacientes WHERE remote_id IS NULL OR remote_id=''", null);
+          try {
+              while (unsynced.moveToNext()) {
+                  String localName = blank(unsynced.getString(1), "");
+                  String localPhone = digits(unsynced.getString(2));
+                  String localPolicy = blank(unsynced.getString(4), "");
+                  String localClinic = blank(unsynced.getString(5), "");
+                  if (localName.isEmpty() || localPhone.isEmpty()) { unlinkedLocalPatients++; continue; }
+                  String matchedRemoteId = "";
+                  int matches = 0;
+                  for (int i = 0; i < remotePatients.length(); i++) {
+                      JSONObject candidate = remotePatients.getJSONObject(i);
+                      boolean nameMatches = localName.equalsIgnoreCase(blank(candidate.optString("name", ""), ""));
+                      boolean phoneMatches = localPhone.equals(digits(candidate.optString("phone", "")));
+                      boolean policyMatches = localPolicy.isEmpty() || localPolicy.equalsIgnoreCase(blank(candidate.optString("policy_number", ""), ""));
+                      boolean clinicMatches = localClinic.isEmpty() || localClinic.equalsIgnoreCase(blank(candidate.optString("clinic", ""), ""));
+                      if (nameMatches && phoneMatches && policyMatches && clinicMatches) {
+                          String candidateId = candidate.optString("id", "");
+                          if (!candidateId.isEmpty()) { matchedRemoteId = candidateId; matches++; }
+                      }
+                  }
+                  if (matches == 1) db.setRemotePatientId(unsynced.getLong(0), matchedRemoteId);
+                  else unlinkedLocalPatients++;
+              }
+          } finally { unsynced.close(); }
+
+          '''
+          if 'Solo Registro de clientes da de alta pacientes' not in s:
+              s = s[:start] + block + s[end:]
+
+          # Impide duplicados al repetir un POST de pago tras un corte de conexión:
+          # cada pago local tiene un UUID remoto determinista basado en instalación + id SQLite.
+          pay_start = s.index('        // 3) Subir abonos locales aún no sincronizados, con el UUID real del paciente.')
+          pay_end = s.index('        // 4) Descargar pagos del panel;', pay_start)
+          pay_block = '''        // 3) Subir abonos de manera idempotente y conservar su fecha original.
+          Cursor localPayments = local.rawQuery("SELECT pa.id,pa.paciente_id,pa.monto,pa.fecha,pa.nota,p.nombre,p.remote_id,pa.remote_id FROM pagos pa JOIN pacientes p ON p.id=pa.paciente_id WHERE pa.remote_id IS NULL OR pa.remote_id=''", null);
+          try {
+              while (localPayments.moveToNext()) {
+                  String patientRemote = localPayments.getString(6);
+                  if (patientRemote == null || patientRemote.isEmpty()) continue;
+                  long localPaymentId = localPayments.getLong(0);
+                  String remotePaymentId = stableRemotePaymentId(localPaymentId);
+                  JSONObject pay = new JSONObject();
+                  pay.put("id", remotePaymentId);
+                  pay.put("patient_id", patientRemote);
+                  pay.put("patient_name", localPayments.getString(5));
+                  pay.put("amount", localPayments.getDouble(2));
+                  pay.put("paid_at", isoUtc(localPayments.getLong(3)));
+                  pay.put("concept", blank(localPayments.getString(4), "Abono"));
+                  pay.put("reference", blank(localPayments.getString(4), ""));
+                  pay.put("source_device", "DENTAL JG APK");
+                  JSONArray saved = requestArray("POST", "/rest/v1/payments?on_conflict=id", pay, jwt, "resolution=ignore-duplicates,return=representation");
+                  if (saved.length() == 0) {
+                      JSONArray existing = requestArray("GET", "/rest/v1/payments?id=eq." + remotePaymentId + "&select=id,patient_id,amount", null, jwt, null);
+                      if (existing.length() == 0) throw new Exception("No se pudo confirmar el pago local " + localPaymentId + " en Supabase.");
+                      JSONObject prior = existing.getJSONObject(0);
+                      if (!patientRemote.equals(prior.optString("patient_id", "")) || Math.abs(prior.optDouble("amount", -1) - localPayments.getDouble(2)) > 0.009) {
+                          throw new Exception("El identificador de sincronización del pago " + localPaymentId + " ya existe con datos distintos. Se detuvo para no duplicar ni mezclar pagos.");
+                      }
+                  }
+                  db.setRemotePaymentId(localPaymentId, remotePaymentId);
+                  Cursor amountCursor = local.rawQuery("SELECT pagado FROM pacientes WHERE id=?", new String[]{String.valueOf(localPayments.getLong(1))});
+                  double localPaid = 0;
+                  if (amountCursor.moveToFirst()) localPaid = amountCursor.getDouble(0);
+                  amountCursor.close();
+                  JSONArray cloudPatient = requestArray("GET", "/rest/v1/patients?id=eq." + patientRemote + "&select=paid", null, jwt, null);
+                  double cloudPaid = cloudPatient.length() > 0 ? cloudPatient.getJSONObject(0).optDouble("paid", 0) : 0;
+                  if (localPaid > cloudPaid) {
+                      JSONObject update = new JSONObject(); update.put("p_patient_id", patientRemote); update.put("p_new_paid", localPaid);
+                      request("POST", "/rest/v1/rpc/sync_patient_paid", update, jwt, null);
+                  }
+              }
+          } finally { localPayments.close(); }
+
+          '''
+          if 'stableRemotePaymentId(localPaymentId)' not in s:
+              s = s[:pay_start] + pay_block + s[pay_end:]
+
+          # Limita la descarga ordinaria de pagos al conjunto de pacientes asignados a este gestor.
+          old_download = '''        JSONArray remotePayments=requestArray("GET","/rest/v1/payments?select=*&order=paid_at.desc",null,jwt,null);
+          for(int i=0;i<remotePayments.length();i++) db.upsertRemotePayment(remotePayments.getJSONObject(i));
+          // Releer la lista de pacientes para incluir los cambios de saldo que guardó el panel.
+          remotePatients=requestArray("GET","/rest/v1/patients?select=*&assigned_manager_id=eq." + assignedManager + "&order=created_at.desc",null,jwt,null);
+          for(int i=0;i<remotePatients.length();i++) db.upsertRemotePatient(remotePatients.getJSONObject(i));
+          }'''
+          new_download = '''        StringBuilder assignedPatientIds = new StringBuilder();
+          for (int i = 0; i < remotePatients.length(); i++) {
+              String id = remotePatients.getJSONObject(i).optString("id", "");
+              if (id.matches("[0-9a-fA-F-]{36}")) { if (assignedPatientIds.length() > 0) assignedPatientIds.append(','); assignedPatientIds.append(id); }
+          }
+          if (assignedPatientIds.length() > 0) {
+              JSONArray remotePayments = requestArray("GET", "/rest/v1/payments?select=*&patient_id=in.(" + assignedPatientIds + ")&order=paid_at.desc", null, jwt, null);
+              for (int i = 0; i < remotePayments.length(); i++) db.upsertRemotePayment(remotePayments.getJSONObject(i));
+          }
+          remotePatients = requestArray("GET", "/rest/v1/patients?select=*&assigned_manager_id=eq." + assignedManager + "&order=created_at.desc", null, jwt, null);
+          for (int i = 0; i < remotePatients.length(); i++) db.upsertRemotePatient(remotePatients.getJSONObject(i));
+          if (unlinkedLocalPatients > 0) {
+              return "Sincronización completada. Hay " + unlinkedLocalPatients + " paciente(s) antiguo(s) que siguen solo en este teléfono; no se subieron desde Gestor. Regístralos en Registro de clientes y vuelve a sincronizar para vincularlos sin duplicarlos. Los datos locales se conservaron.";
+          }
+          return null;
+          }
+          private String stableRemotePaymentId(long localPaymentId) {
+              SharedPreferences identity = context.getSharedPreferences("dentaljg_sync_identity", Context.MODE_PRIVATE);
+              String deviceId = identity.getString("sync_device_id", "");
+              if (deviceId.isEmpty()) {
+                  deviceId = UUID.randomUUID().toString();
+                  identity.edit().putString("sync_device_id", deviceId).apply();
+              }
+              return UUID.nameUUIDFromBytes(("DENTAL-JG-PAYMENT:" + deviceId + ":" + localPaymentId).getBytes(StandardCharsets.UTF_8)).toString();
+          }
+          private static String isoUtc(long millis) {
+              SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+              format.setTimeZone(TimeZone.getTimeZone("UTC"));
+              return format.format(new java.util.Date(millis));
+          }'''
+          # replace closing final function tail with download block and stable-id helpers
+          s_start = s.index('        // 4) Descargar pagos del panel;', s.index('public String sync(CustomerDbHelper db)'))
+          s_end = s.index('    private static String blank(', s_start)
+          if 'stableRemotePaymentId(long localPaymentId)' not in s:
+              s = s[:s_start] + new_download + '\n' + s[s_end:]
+          p.write_text(s, encoding='utf-8')
+
+          # Make UI explain when old local-only patients were intentionally kept on device.
+          p = root / 'gestor-app/src/main/java/com/example/gestoriaasistente/MainActivity.java'
+          s = p.read_text(encoding='utf-8')
+          old = '''            String error = null;
+              try { cloud.sync(db); }
+              catch (Exception ex) { error = ex.getMessage() == null ? "No se pudo sincronizar." : ex.getMessage(); }
+              finally { cloudSyncRunning = false; }
+              final String result = error;
+              runOnUiThread(() -> {
+                  refresh();
+                  if (notify) {
+                      if (result == null) toast(successMessage.isEmpty() ? "Cambios sincronizados." : successMessage);
+                      else toast("Guardado en el teléfono; no se pudo sincronizar: " + result);
+                  }
+              });'''
+          new = '''            String error = null;
+              String warning = null;
+              try { warning = cloud.sync(db); }
+              catch (Exception ex) { error = ex.getMessage() == null ? "No se pudo sincronizar." : ex.getMessage(); }
+              finally { cloudSyncRunning = false; }
+              final String result = error;
+              final String syncWarning = warning;
+              runOnUiThread(() -> {
+                  refresh();
+                  if (notify) {
+                      if (result != null) toast("No se pudo completar la sincronización: " + result);
+                      else if (syncWarning != null && !syncWarning.isEmpty()) toast(syncWarning);
+                      else toast(successMessage.isEmpty() ? "Cambios sincronizados." : successMessage);
+                  }
+              });'''
+          if old in s: s = s.replace(old, new, 1)
+          old = '''new Thread(()->{String error=null;try{cloud.login(e,p);cloud.verifyManagerKey(k);cloud.sync(db);}catch(Exception ex){error=ex.getMessage()==null?"No se pudo sincronizar.":ex.getMessage();}
+                  final String result=error;runOnUiThread(()->{refresh();cloudStatus.setText(cloud.connected()?"Cuenta conectada: "+cloud.email():"Sin cuenta conectada");if(result==null)toast("Sincronización completada.");else toast("No se completó: "+result);});
+              }).start();'''
+          new = '''new Thread(()->{String error=null,warning=null;try{cloud.login(e,p);cloud.verifyManagerKey(k);warning=cloud.sync(db);}catch(Exception ex){error=ex.getMessage()==null?"No se pudo sincronizar.":ex.getMessage();}
+                  final String result=error, syncWarning=warning;runOnUiThread(()->{refresh();cloudStatus.setText(cloud.connected()?"Cuenta conectada: "+cloud.email():"Sin cuenta conectada");if(result!=null)toast("No se completó: "+result);else toast(syncWarning==null?"Sincronización completada.":syncWarning);});
+              }).start();'''
+          if old in s: s = s.replace(old, new, 1)
+          old = '''new Thread(()->{String error=null;try{cloud.sync(db);}catch(Exception ex){error=ex.getMessage()==null?"No se pudo sincronizar.":ex.getMessage();}
+                  final String result=error;runOnUiThread(()->{refresh();cloudStatus.setText(cloud.connected()?"Cuenta conectada: "+cloud.email():"Sin cuenta conectada");if(result==null)toast("Sincronización completada.");else toast("No se completó: "+result);});
+              }).start();'''
+          new = '''new Thread(()->{String error=null,warning=null;try{warning=cloud.sync(db);}catch(Exception ex){error=ex.getMessage()==null?"No se pudo sincronizar.":ex.getMessage();}
+                  final String result=error, syncWarning=warning;runOnUiThread(()->{refresh();cloudStatus.setText(cloud.connected()?"Cuenta conectada: "+cloud.email():"Sin cuenta conectada");if(result!=null)toast("No se completó: "+result);else toast(syncWarning==null?"Sincronización completada.":syncWarning);});
+              }).start();'''
+          if old in s: s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # Bump local service-worker versions so an APK update doesn't continue serving stale cached JS/CSS.
+          p = root / 'cobranza-app/src/main/assets/app.js'
+          s = p.read_text(encoding='utf-8').replace("serviceWorker.register('./service-worker.js?v=10.8.52'", "serviceWorker.register('./service-worker.js?v=10.8.102'", 1)
+          p.write_text(s, encoding='utf-8')
+          p = root / 'cobranza-app/src/main/assets/service-worker.js'
+          s = p.read_text(encoding='utf-8').replace('dental-jg-10-8-53-recibos-verticales', 'dental-jg-10-8-102-recibos-verticales', 1)
+          p.write_text(s, encoding='utf-8')
+          p = root / 'panel-apk/src/main/assets/service-worker.js'
+          s = p.read_text(encoding='utf-8').replace('admon-app-shell-v10-8-35-cache-clean', 'admon-app-shell-v10-8-102-cache-clean', 1)
+          p.write_text(s, encoding='utf-8')
+          p = root / 'panel-apk/src/main/assets/index.html'
+          s = p.read_text(encoding='utf-8').replace('service-worker.js?v=10.8.101', 'service-worker.js?v=10.8.102')
+          p.write_text(s, encoding='utf-8')
+
+          # Stop if any of the critical corrections silently failed to apply.
+          if 'No se subieron desde Gestor' not in (root / 'gestor-app/src/main/java/com/example/gestoriaasistente/SupabaseSync.java').read_text():
+              raise SystemExit('No quedó el aviso para pacientes locales no vinculados.')
+          if 'stableRemotePaymentId(localPaymentId)' not in (root / 'gestor-app/src/main/java/com/example/gestoriaasistente/SupabaseSync.java').read_text():
+              raise SystemExit('No quedó activa la sincronización idempotente de pagos.')
+          print('Correcciones de SQLite, sincronización de pagos y cachés aplicadas.')
+          PY
+
       - name: Compilar todos los módulos Android
         shell: bash
         run: |
