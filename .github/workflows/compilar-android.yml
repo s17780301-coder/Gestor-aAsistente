@@ -48,7 +48,8 @@ jobs:
           echo "$RUNNER_TEMP/gradle-8.9/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/gradle-8.9/bin/gradle" --version
 
-      - name: Encontrar y extraer proyecto Android
+      - name: Encontrar proyecto fuente o APKs ya compilados
+        id: project
         shell: bash
         run: |
           set -euo pipefail
@@ -75,13 +76,27 @@ jobs:
           done < <(find "$GITHUB_WORKSPACE" -type f -iname '*.zip' -print0)
 
           if [[ -z "$FOUND" ]]; then
-            echo "::error::No encontré un ZIP que contenga settings.gradle y archivos de proyecto Android. Sube el ZIP del proyecto, no el ZIP del panel web."
+            mkdir -p "$GITHUB_WORKSPACE/apks"
+            while IFS= read -r -d '' apk; do
+              cp -n "$apk" "$GITHUB_WORKSPACE/apks/$(basename "$apk")"
+            done < <(find "$RUNNER_TEMP/dental_extract" -type f -iname '*.apk' -print0)
+
+            if [[ -n "$(find "$GITHUB_WORKSPACE/apks" -type f -iname '*.apk' -print -quit)" ]]; then
+              echo "::notice::El ZIP contiene APKs ya compilados, no el código fuente Android. Se publicarán esos APKs existentes; no se recompilarán."
+              echo "mode=apks" >> "$GITHUB_OUTPUT"
+              ls -lh "$GITHUB_WORKSPACE/apks"
+              exit 0
+            fi
+
+            echo "::error::No encontré código fuente Gradle ni APKs dentro de los ZIP del repositorio. Para recompilar, sube el ZIP fuente con settings.gradle y los módulos Android."
             find "$GITHUB_WORKSPACE" -maxdepth 2 -type f -printf '%P\n' | head -100 || true
             exit 1
           fi
           echo "ANDROID_PROJECT_DIR=$FOUND" >> "$GITHUB_ENV"
+          echo "mode=source" >> "$GITHUB_OUTPUT"
 
       - name: Aceptar licencias e instalar plataformas necesarias
+        if: steps.project.outputs.mode == 'source'
         shell: bash
         run: |
           set -euo pipefail
@@ -99,6 +114,7 @@ jobs:
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Aplicar firma estable y subir versiones Android
+        if: steps.project.outputs.mode == 'source'
         shell: bash
         run: |
           set -euo pipefail
@@ -177,6 +193,7 @@ jobs:
           PY
 
       - name: Compilar todos los módulos Android
+        if: steps.project.outputs.mode == 'source'
         shell: bash
         run: |
           set -euo pipefail
@@ -184,6 +201,7 @@ jobs:
           gradle --no-daemon --stacktrace assembleDebug
 
       - name: Verificar firma, paquetes y versiones de los APK
+        if: steps.project.outputs.mode == 'source'
         shell: bash
         run: |
           set -euo pipefail
@@ -218,6 +236,7 @@ jobs:
           done
 
       - name: Reunir APKs
+        if: steps.project.outputs.mode == 'source'
         shell: bash
         run: |
           set -euo pipefail
