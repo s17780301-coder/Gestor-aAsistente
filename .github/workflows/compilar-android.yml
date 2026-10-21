@@ -116,6 +116,87 @@ jobs:
           print("Botón Registro de roles normalizado sin alterar su acción.")
           PY
 
+      - name: Corregir edición y guardado del correo de la cuenta Admon
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          root = Path(os.environ["ANDROID_PROJECT_DIR"])
+          html = root / "panel-apk" / "src" / "main" / "assets" / "index.html"
+          js = root / "panel-apk" / "src" / "main" / "assets" / "app.js"
+          if not html.is_file() or not js.is_file():
+              raise SystemExit("Faltan index.html o app.js del panel Admon.")
+
+          page = html.read_text(encoding="utf-8")
+          old_fields = '<label>Correo actual</label><input id="ownCurrentEmail" type="email" readonly><label>Nuevo correo (opcional)</label><input id="ownNewEmail" type="email" maxlength="254" placeholder="Nuevo correo">'
+          new_fields = '<label>Correo de la cuenta (editable)</label><input id="ownCurrentEmail" type="email" maxlength="254" autocomplete="email" required>'
+          if old_fields in page:
+              page = page.replace(old_fields, new_fields, 1)
+              html.write_text(page, encoding="utf-8")
+              print("Campo de correo desbloqueado y simplificado.")
+          elif new_fields not in page:
+              raise SystemExit("El formulario de correo tiene una estructura inesperada; no se publicará un cambio parcial.")
+
+          source = js.read_text(encoding="utf-8")
+          start = source.find("$('ownAccountForm').addEventListener('submit'")
+          end = source.find("$('loginForm').addEventListener('submit'", start)
+          if start < 0 or end < 0:
+              raise SystemExit("No se encontró el manejador del formulario de cuenta; se cancela la compilación.")
+          handler = """$('ownAccountForm').addEventListener('submit',async e=>{
+            e.preventDefault();
+            const form=e.currentTarget,button=form.querySelector('button[type=submit]');
+            const email=$('ownCurrentEmail').value.trim().toLowerCase();
+            const password=$('ownNewPassword').value;
+            const confirmPassword=$('ownConfirmPassword').value;
+            if(!email){$('ownAccountMessage').textContent='Escribe un correo válido.';return;}
+            if(password&&password.length<8){$('ownAccountMessage').textContent='La contraseña debe tener al menos 8 caracteres.';return;}
+            if(password&&password!==confirmPassword){$('ownAccountMessage').textContent='Las contraseñas no coinciden.';return;}
+            if(!password&&confirmPassword){$('ownAccountMessage').textContent='Para confirmar una contraseña, primero escribe la nueva contraseña.';return;}
+            if(!confirm('¿Confirmas guardar los cambios de tu cuenta?'))return;
+            const originalText=button?.textContent||'Guardar cambios de mi cuenta';
+            if(button){button.disabled=true;button.textContent='Guardando…';}
+            $('ownAccountMessage').textContent='Guardando cambios de tu cuenta…';
+            try{
+              const {data:current,error:currentError}=await client.auth.getUser();
+              if(currentError)throw currentError;
+              const currentEmail=String(current?.user?.email||'').trim().toLowerCase();
+              if(!currentEmail)throw new Error('No se pudo identificar la cuenta autenticada. Cierra sesión y vuelve a entrar.');
+              const changes={},emailChanged=email!==currentEmail;
+              if(emailChanged)changes.email=email;
+              if(password)changes.password=password;
+              if(!Object.keys(changes).length){$('ownAccountMessage').textContent='No hay cambios que guardar.';return;}
+              const {data,error}=await client.auth.updateUser(changes);
+              if(error)throw error;
+              if(password){$('ownNewPassword').value='';$('ownConfirmPassword').value='';}
+              if(emailChanged){
+                const savedEmail=String(data?.user?.email||'').trim().toLowerCase();
+                if(savedEmail===email){
+                  $('ownCurrentEmail').value=savedEmail;
+                  $('ownAccountMessage').textContent='Correo actualizado correctamente.'+(password?' La contraseña también se actualizó.':'');
+                }else{
+                  $('ownAccountMessage').textContent='Supabase recibió la solicitud para cambiar el correo a '+email+'. Si la confirmación de correo está activada, el cambio se hará efectivo después de abrir el mensaje de verificación enviado a esa dirección.'+(password?' La contraseña sí se actualizó.':'');
+                }
+              }else{
+                $('ownCurrentEmail').value=data?.user?.email||currentEmail;
+                $('ownAccountMessage').textContent='Contraseña actualizada y guardada correctamente.';
+              }
+            }catch(err){
+              $('ownAccountMessage').textContent='No se pudieron guardar los cambios: '+(err.message||'Error desconocido.');
+            }finally{
+              if(button){button.disabled=false;button.textContent=originalText;}
+            }
+          });
+          """
+          source = source[:start] + handler + source[end:]
+          source = source.replace("$('ownCurrentEmail').value=data?.user?.email||$('ownCurrentEmail').value;", "$('ownCurrentEmail').value=userData?.user?.email||$('ownCurrentEmail').value;")
+          js.write_text(source, encoding="utf-8")
+          print("Formulario de cuenta actualizado: correo editable, validación y mensajes reales de guardado.")
+          PY
+
       - name: Aceptar licencias e instalar plataformas necesarias
         if: steps.project.outputs.mode == 'source'
         shell: bash
