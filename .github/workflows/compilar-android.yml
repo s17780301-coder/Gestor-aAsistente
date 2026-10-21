@@ -94,6 +94,28 @@ jobs:
           echo "ANDROID_PROJECT_DIR=$FOUND" >> "$GITHUB_ENV"
           echo "mode=source" >> "$GITHUB_OUTPUT"
 
+      - name: Unificar el estilo del botón Registro de roles en Admon
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ["ANDROID_PROJECT_DIR"])
+          html = root / "panel-apk" / "src" / "main" / "assets" / "index.html"
+          css = root / "panel-apk" / "src" / "main" / "assets" / "styles.css"
+          page = html.read_text(encoding="utf-8")
+          page = page.replace('class="nav nav-role-entry"', 'class="nav"')
+          html.write_text(page, encoding="utf-8")
+          styles = css.read_text(encoding="utf-8")
+          styles = styles.replace('.nav[data-page="users"]{grid-column:1/-1!important;justify-content:center!important}', '')
+          mobile = '/* Alineación uniforme de Registro de roles */\n@media(max-width:700px){.sidebar nav button.nav[data-page="users"]{grid-column:auto!important;justify-content:flex-start!important}}\n'
+          if mobile.strip() not in styles:
+              styles = styles.rstrip() + "\n\n" + mobile
+              css.write_text(styles, encoding="utf-8")
+          print("Botón Registro de roles normalizado sin alterar su acción.")
+          PY
+
       - name: Aceptar licencias e instalar plataformas necesarias
         if: steps.project.outputs.mode == 'source'
         shell: bash
