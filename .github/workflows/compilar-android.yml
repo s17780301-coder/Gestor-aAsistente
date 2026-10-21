@@ -302,10 +302,13 @@ jobs:
               except (UnicodeDecodeError, OSError):
                   continue
               if "1.0.3" in body:
-                  path.write_text(body.replace("1.0.3", "1.0.4"), encoding="utf-8")
+                  body = body.replace("1.0.3", "1.0.5")
+              if "1.0.4" in body:
+                  body = body.replace("1.0.4", "1.0.5")
+              path.write_text(body, encoding="utf-8")
 
 
-          version_updates = {'gestor-app': (17, 18), 'cobranza-app': (3, 4), 'registro-app': (3, 4), 'panel-apk': (9, 10)}
+          version_updates = {'gestor-app': (17, 18), 'cobranza-app': (3, 4), 'registro-app': (3, 4), 'panel-apk': (8, 10)}
           for module, (old_code, new_code) in version_updates.items():
               gradle = root / module / 'build.gradle'
               if not gradle.is_file():
@@ -323,7 +326,7 @@ jobs:
                   raise SystemExit(f"versionCode inesperado en {module}: {current_code}; se esperaba {old_code} o {new_code}")
               updated, count = re.subn(r"\bversionName\s+['\"][^'\"]+['\"]", "versionName '1.0.3'", updated, count=1)
               if module == "panel-apk":
-                  updated = updated.replace("versionName '1.0.3'", "versionName '1.0.4'", 1)
+                  updated = updated.replace("versionName '1.0.3'", "versionName '1.0.5'", 1)
               if count != 1:
                   raise SystemExit(f"No se pudo actualizar versionName en {module}")
               # Detecta correctamente el bloque existente; evita duplicar signingConfigs.
@@ -373,7 +376,7 @@ jobs:
           test -x "$AAPT"
           declare -A EXPECTED
           EXPECTED[gestor-app]="com.example.gestoriaasistente 18 1.0.3"
-          EXPECTED[panel-apk]="com.example.dentaljgadmin 10 1.0.4"
+          EXPECTED[panel-apk]="com.example.dentaljgadmin 10 1.0.5"
           EXPECTED[cobranza-app]="com.example.dentaljgcobranza 4 1.0.3"
           EXPECTED[registro-app]="com.example.dentaljgregistro 4 1.0.3"
           CERT_EXPECTED="c3ea80a5b17f24e7677ea49be5b176b8196b306c35fd8249d8c8fc507338efef"
