@@ -244,7 +244,7 @@ jobs:
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Aplicar firma estable y subir versiones Android
+      - name: Aplicar firma estable y normalizar versiones Android
         if: steps.project.outputs.mode == 'source'
         shell: bash
         run: |
@@ -263,52 +263,21 @@ jobs:
               'Cobranza': root / 'cobranza-app' / 'src' / 'main' / 'assets' / 'logo-dental-jg.png',
           }
           logo_bytes = official_logo.read_bytes()
-
-          # Conservar intactos los iconos de las aplicaciones del ZIP.
           for app_name, target in logo_targets.items():
               if not target.parent.is_dir():
                   raise SystemExit(f"No existe la carpeta del logotipo de {app_name}: {target.parent}")
               target.write_bytes(logo_bytes)
-              print(f"{app_name}: logotipo oficial transparente aplicado ({len(logo_bytes)} bytes)")
+              print(f"{app_name}: logotipo oficial transparente aplicado")
 
-          # Corrige también el texto visible que estaba fijado como 1.0.2 en la interfaz.
-          # Limita el cambio a archivos de texto fuente; no toca imágenes ni binarios.
-          text_ext = {'.xml', '.html', '.htm', '.js', '.ts', '.css', '.json', '.properties', '.kt', '.java', '.txt', '.md'}
-          changed_labels = 0
-          for path in root.rglob('*'):
-              if not path.is_file() or path.suffix.lower() not in text_ext:
-                  continue
-              if any(part in {'build', '.gradle', 'node_modules'} for part in path.parts):
-                  continue
-              try:
-                  body = path.read_text(encoding='utf-8')
-              except (UnicodeDecodeError, OSError):
-                  continue
-              if '1.0.2' in body:
-                  path.write_text(body.replace('1.0.2', '1.0.3'), encoding='utf-8')
-                  changed_labels += 1
-                  print(f"Versión visible 1.0.2 -> 1.0.3: {path.relative_to(root)}")
-          print(f"Archivos de interfaz con versión corregida: {changed_labels}")
-
-          # La versión visible de Admon acompaña el cambio de cuenta a 1.0.4.
-          panel_root = root / "panel-apk"
-          for path in panel_root.rglob("*"):
-              if not path.is_file() or path.suffix.lower() not in text_ext:
-                  continue
-              if any(part in {"build", ".gradle", "node_modules"} for part in path.parts):
-                  continue
-              try:
-                  body = path.read_text(encoding="utf-8")
-              except (UnicodeDecodeError, OSError):
-                  continue
-              if "1.0.3" in body:
-                  body = body.replace("1.0.3", "1.0.5")
-              if "1.0.4" in body:
-                  body = body.replace("1.0.4", "1.0.5")
-              path.write_text(body, encoding="utf-8")
-
-
-          version_updates = {'gestor-app': (17, 18), 'cobranza-app': (3, 4), 'registro-app': (3, 4), 'panel-apk': (8, 10)}
+          # Los versionCode de los módulos han evolucionado con el proyecto.
+          # Aceptar tanto el valor de origen del ZIP 1.0.6 como el ya incrementado
+          # hace que el paso sea seguro ante reintentos y no rebaje versiones.
+          version_updates = {
+              'gestor-app': (19, 20),
+              'panel-apk': (9, 10),
+              'cobranza-app': (5, 6),
+              'registro-app': (5, 6),
+          }
           for module, (old_code, new_code) in version_updates.items():
               gradle = root / module / 'build.gradle'
               if not gradle.is_file():
@@ -324,12 +293,10 @@ jobs:
                   updated = source
               else:
                   raise SystemExit(f"versionCode inesperado en {module}: {current_code}; se esperaba {old_code} o {new_code}")
-              updated, count = re.subn(r"\bversionName\s+['\"][^'\"]+['\"]", "versionName '1.0.3'", updated, count=1)
-              if module == "panel-apk":
-                  updated = updated.replace("versionName '1.0.3'", "versionName '1.0.5'", 1)
-              if count != 1:
-                  raise SystemExit(f"No se pudo actualizar versionName en {module}")
-              # Detecta correctamente el bloque existente; evita duplicar signingConfigs.
+              # Mantener la versionName que trae el proyecto, sin rebajarla.
+              if not re.search(r"\bversionName\s+['\"][^'\"]+['\"]", updated):
+                  raise SystemExit(f"No existe versionName en {module}")
+              # Añadir firma debug común solo si el módulo aún no tiene configuración estable.
               if not re.search(r'\bstableDebug\s*\{', updated):
                   updated = updated.rstrip() + """
 
@@ -350,7 +317,8 @@ jobs:
           }
           """
               gradle.write_text(updated.rstrip() + "\n", encoding='utf-8')
-              print(f"{module}: versionCode {new_code}, versionName 1.0.3")
+              print(f"{module}: versionCode {new_code}; versionName conservado")
+
           key = root / 'panel-apk' / 'dentaljg-debug.keystore'
           if not key.is_file():
               raise SystemExit(f"Falta la clave de firma estable: {key}")
@@ -375,10 +343,10 @@ jobs:
           test -x "$APKSIGNER"
           test -x "$AAPT"
           declare -A EXPECTED
-          EXPECTED[gestor-app]="com.example.gestoriaasistente 18 1.0.3"
-          EXPECTED[panel-apk]="com.example.dentaljgadmin 10 1.0.5"
-          EXPECTED[cobranza-app]="com.example.dentaljgcobranza 4 1.0.3"
-          EXPECTED[registro-app]="com.example.dentaljgregistro 4 1.0.3"
+          EXPECTED[gestor-app]="com.example.gestoriaasistente 20 1.0.6"
+          EXPECTED[panel-apk]="com.example.dentaljgadmin 10 1.0.6"
+          EXPECTED[cobranza-app]="com.example.dentaljgcobranza 6 1.0.6"
+          EXPECTED[registro-app]="com.example.dentaljgregistro 6 1.0.6"
           CERT_EXPECTED="c3ea80a5b17f24e7677ea49be5b176b8196b306c35fd8249d8c8fc507338efef"
           for module in gestor-app panel-apk cobranza-app registro-app; do
             apk="$(find "$ANDROID_PROJECT_DIR/$module/build/outputs/apk/debug" -maxdepth 1 -type f -name '*.apk' -print -quit)"
