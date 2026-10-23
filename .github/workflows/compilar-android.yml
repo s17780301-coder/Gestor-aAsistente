@@ -415,7 +415,7 @@ jobs:
           # Se conserva la firma del RPC para compatibilidad, enviando tratamiento nulo y tabulador 0.
           source = source.replace(",treatment=$('treatment').value", "")
           source = source.replace("||!treatment", "")
-          source = source.replace("p_treatment:treatment", "p_treatment:null")
+          source = source.replace("p_treatment:treatment", "p_treatment:'No especificado'")
           source = source.replace("tabulator=Number($('tabulator').value||0)", "tabulator=0")
           if 'patientFullName' not in source or "$('treatment')" in source or 'p_treatment:null' not in source or 'p_tabulator:tabulator' not in source or 'isJunkPolicyType' not in source:
 
