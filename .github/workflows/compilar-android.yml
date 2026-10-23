@@ -422,7 +422,7 @@ jobs:
           .form-actions button{width:100%;min-height:48px}
           .form .form-actions{grid-column:1/-1}
           @media(max-width:650px){.form-section{padding:15px;border-radius:15px}.section-grid{grid-template-columns:1fr;gap:13px}.field-span-2{grid-column:auto}.form-actions{grid-template-columns:1fr}.section-heading h3{font-size:17px}.section-heading p{font-size:12px}}
-"""
+          """
           css.write_text(styles, encoding="utf-8")
           print("Formulario Registro actualizado y validado.")
           PY
