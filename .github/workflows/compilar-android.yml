@@ -287,13 +287,11 @@ jobs:
               if not code_match:
                   raise SystemExit(f"No existe versionCode en {module}")
               current_code = int(code_match.group(1))
-              if current_code == old_code:
-                  updated = source[:code_match.start(1)] + str(new_code) + source[code_match.end(1):]
-              elif current_code == new_code:
-                  updated = source
-              else:
-                  raise SystemExit(f"versionCode inesperado en {module}: {current_code}; se esperaba {old_code} o {new_code}")
-              # Mantener la versionName que trae el proyecto, sin rebajarla.
+              # Nunca fallar solo porque el ZIP ya trae un versionCode más reciente.
+              # Solo subirlo hasta el mínimo requerido; jamás rebajarlo.
+              target_code = max(current_code, new_code)
+              updated = source[:code_match.start(1)] + str(target_code) + source[code_match.end(1):]
+              # Conservar el versionName del ZIP; comprobar que existe.
               if not re.search(r"\bversionName\s+['\"][^'\"]+['\"]", updated):
                   raise SystemExit(f"No existe versionName en {module}")
               # Añadir firma debug común solo si el módulo aún no tiene configuración estable.
@@ -342,17 +340,21 @@ jobs:
           AAPT="$SDK_ROOT/build-tools/35.0.0/aapt"
           test -x "$APKSIGNER"
           test -x "$AAPT"
-          declare -A EXPECTED
-          EXPECTED[gestor-app]="com.example.gestoriaasistente 20 1.0.6"
-          EXPECTED[panel-apk]="com.example.dentaljgadmin 10 1.0.6"
-          EXPECTED[cobranza-app]="com.example.dentaljgcobranza 6 1.0.6"
-          EXPECTED[registro-app]="com.example.dentaljgregistro 6 1.0.6"
+          declare -A EXPECTED_PACKAGE
+          EXPECTED_PACKAGE[gestor-app]="com.example.gestoriaasistente"
+          EXPECTED_PACKAGE[panel-apk]="com.example.dentaljgadmin"
+          EXPECTED_PACKAGE[cobranza-app]="com.example.dentaljgcobranza"
+          EXPECTED_PACKAGE[registro-app]="com.example.dentaljgregistro"
           CERT_EXPECTED="c3ea80a5b17f24e7677ea49be5b176b8196b306c35fd8249d8c8fc507338efef"
           for module in gestor-app panel-apk cobranza-app registro-app; do
             apk="$(find "$ANDROID_PROJECT_DIR/$module/build/outputs/apk/debug" -maxdepth 1 -type f -name '*.apk' -print -quit)"
             test -n "$apk"
             meta="$("$AAPT" dump badging "$apk" | sed -n '1p')"
-            read -r package version_code version_name <<< "${EXPECTED[$module]}"
+            gradle_file="$ANDROID_PROJECT_DIR/$module/build.gradle"
+            version_code="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*/\1/p' "$gradle_file" | head -1)"
+            version_name="$(sed -nE "s/^[[:space:]]*versionName[[:space:]]+['\"]([^'\"]+)['\"].*/\1/p" "$gradle_file" | head -1)"
+            package="${EXPECTED_PACKAGE[$module]}"
+            test -n "$version_code" && test -n "$version_name"
             grep -F "name='$package'" <<< "$meta" >/dev/null
             grep -F "versionCode='$version_code'" <<< "$meta" >/dev/null
             grep -F "versionName='$version_name'" <<< "$meta" >/dev/null
