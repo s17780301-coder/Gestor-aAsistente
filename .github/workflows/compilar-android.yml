@@ -144,10 +144,6 @@ jobs:
           # Registro: consulta user_id y cae a id_usuario solo si el esquema lo requiere.
           p = root / "registro-app/src/main/assets/registro-web/app.js"
           s = p.read_text(encoding="utf-8")
-          old_block = """const { data, error } = await db.from('app_user_roles')
-                .select('role')
-                .eq('user_id', candidateUser.id)
-                .in('role', ['registro', 'admin']);"""
           new_block = """// La tabla puede usar user_id o id_usuario según la instalación.
               let roleResult = await db.from('app_user_roles')
                 .select('role')
@@ -160,9 +156,9 @@ jobs:
                   .in('role', ['registro', 'admin']);
               }
               const { data, error } = roleResult;"""
-          if old_block in s:
-              s = s.replace(old_block, new_block, 1)
-          elif ".eq('id_usuario', candidateUser.id)" not in s:
+          pattern = re.compile(r"""const\\s*\\{\\s*data\\s*,\\s*error\\s*\\}\\s*=\\s*await\\s+db\\.from\\(['"]app_user_roles['"]\\)\\s*\\.select\\(['"]role['"]\\)\\s*\\.eq\\(['"]user_id['"]\\s*,\\s*candidateUser\\.id\\)\\s*\\.in\\(['"]role['"]\\s*,\\s*\\[['"]registro['"]\\s*,\\s*['"]admin['"]\\]\\);""")
+          s, count = pattern.subn(new_block, s, count=1)
+          if not count and "id_usuario" not in s:
               raise SystemExit("No se pudo aplicar la compatibilidad de roles de Registro.")
           p.write_text(s, encoding="utf-8")
 
