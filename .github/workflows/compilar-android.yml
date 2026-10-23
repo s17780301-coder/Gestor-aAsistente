@@ -149,8 +149,15 @@ jobs:
               const { data, error } = roleResult;"""
           pattern = re.compile(r"""const\s*\{\s*data\s*,\s*error\s*\}\s*=\s*await\s+db\.from\(['"]app_user_roles['"]\)\s*\.select\(['"]role['"]\)\s*\.eq\(['"]user_id['"]\s*,\s*candidateUser\.id\)\s*\.in\(['"]role['"]\s*,\s*\[['"]registro['"]\s*,\s*['"]admin['"]\]\);""")
           s, count = pattern.subn(new_block, s, count=1)
-          if not count and "id_usuario" not in s:
-              raise SystemExit("No se pudo aplicar la compatibilidad de roles de Registro.")
+          if not count:
+              # La fuente 1.0.7 ya puede incluir la consulta alternativa id_usuario.
+              # Sustituir el bloque completo de comprobación por la consulta a my_roles.
+              start = s.find("// La tabla se ha encontrado en instalaciones con user_id y con id_usuario.")
+              marker = "const { data, error } = roleResult;"
+              end = s.find(marker, start) if start >= 0 else -1
+              if start < 0 or end < 0:
+                  raise SystemExit("No se encontró el bloque de comprobación de roles de Registro; se cancela la compilación.")
+              s = s[:start] + new_block + s[end + len(marker):]
           p.write_text(s, encoding="utf-8")
 
           # Admon: restaurar sesiones solo después de verificar rol admin.
