@@ -430,6 +430,32 @@ jobs:
               print(f"Tema turquesa aplicado a {path.relative_to(root)}")
           PY
 
+      - name: Bloquear altas de pacientes fuera de Registro de clientes
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          root = Path(os.environ["ANDROID_PROJECT_DIR"])
+          path = root / "panel-apk/src/main/assets/app.js"
+          source = path.read_text(encoding="utf-8")
+          start_marker = "  $('patientForm')?.addEventListener('submit',async e=>{"
+          end_marker = "  $('clinicForm').addEventListener('submit',async e=>{"
+          start = source.find(start_marker)
+          if start >= 0:
+              end = source.find(end_marker, start)
+              if end < 0:
+                  raise SystemExit("No se encontró el final del manejador de altas de Administración.")
+              source = source[:start] + "  // Alta de pacientes deshabilitada: el único módulo autorizado es Registro de clientes.\\n  " + source[end:]
+              path.write_text(source, encoding="utf-8")
+          if "from('patients').insert(payload)" in source or 'from("patients").insert(payload)' in source:
+              raise SystemExit("Administración conserva una ruta de INSERT de pacientes; se cancela la compilación.")
+          print("Administración conserva el directorio de consulta, pero no tiene código para dar de alta pacientes.")
+          PY
+
       - name: Aceptar licencias e instalar plataformas necesarias
         if: steps.project.outputs.mode == 'source'
         shell: bash
