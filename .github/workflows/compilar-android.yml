@@ -581,7 +581,7 @@ jobs:
               source = source[:pos] + handler + source[pos:]
           if "data-delete-archive" not in source or "async function deleteArchivedPatient(id)" not in source:
               raise SystemExit("No se pudo verificar la eliminación de expedientes archivados.")
-          source += "\\ndocument.addEventListener('click',e=>{const b=e.target.closest('[data-delete-archive]');if(b)deleteArchivedPatient(b.dataset.deleteArchive)});\\n"
+          source += "\ndocument.addEventListener('click',e=>{const b=e.target.closest('[data-delete-archive]');if(b)deleteArchivedPatient(b.dataset.deleteArchive)});\n"
           js.write_text(source, encoding="utf-8")
           page = html.read_text(encoding="utf-8")
           page = page.replace("app.js?v=1.0.7", "app.js?v=1.0.8").replace("styles.css?v=1.0.7", "styles.css?v=1.0.8")
@@ -641,7 +641,7 @@ jobs:
           version_updates = {
               'gestor-app': (19, 1007),
               'panel-apk': (9, 1007),
-              'cobranza-app': (5, 2001),
+              'cobranza-app': (5, 2002),
               'registro-app': (5, 1007),
           }
           for module, (old_code, new_code) in version_updates.items():
@@ -658,7 +658,7 @@ jobs:
               target_code = max(current_code, new_code)
               updated = source[:code_match.start(1)] + str(target_code) + source[code_match.end(1):]
               # Solo Cobranza recibe la nueva versión; las otras apps conservan 1.0.7.
-              release_name = "1.1.0" if module == "cobranza-app" else "1.0.7"
+              release_name = "1.1.1" if module == "cobranza-app" else "1.0.7"
               updated, name_count = re.subn(r"(\bversionName\s+['\"])[^'\"]+(['\"])", rf"\g<1>{release_name}\2", updated, count=1)
               if name_count != 1:
                   raise SystemExit(f"No existe versionName modificable en {module}")
@@ -717,6 +717,8 @@ jobs:
           html.write_text(page,encoding="utf-8")
           print("El submit queda registrado antes de la inicialización del resto del módulo y los errores se muestran en pantalla.")
           PY
+          node --check "$ANDROID_PROJECT_DIR/cobranza-app/src/main/assets/app.js"
+          echo "Sintaxis JS de Cobranza verificada antes de compilar."
 
       - name: Compilar todos los módulos Android
         if: steps.project.outputs.mode == 'source'
@@ -774,7 +776,7 @@ jobs:
           declare -A OUTPUT_NAME
           OUTPUT_NAME[gestor-app]="DENTAL_JG_Gestor_1.0.7.apk"
           OUTPUT_NAME[panel-apk]="DENTAL_JG_Administracion_1.0.7.apk"
-          OUTPUT_NAME[cobranza-app]="DENTAL_JG_Cobranza_1.1.0.apk"
+          OUTPUT_NAME[cobranza-app]="DENTAL_JG_Cobranza_1.1.1.apk"
           OUTPUT_NAME[registro-app]="DENTAL_JG_Registro_Clientes_1.0.7.apk"
           for module in gestor-app panel-apk cobranza-app registro-app; do
             apk="$(find "$ANDROID_PROJECT_DIR/$module/build/outputs/apk/debug" -maxdepth 1 -type f -name '*.apk' -print -quit)"
@@ -788,7 +790,7 @@ jobs:
       - name: Guardar APKs como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: DENTAL-JG-APKs-1.1.0-access-fix
+          name: DENTAL-JG-APKs-1.1.1-access-fix
           path: apks/*.apk
           if-no-files-found: error
           retention-days: 14
