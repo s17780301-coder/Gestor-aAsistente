@@ -553,6 +553,42 @@ jobs:
           print("Administración conserva el directorio de consulta, pero no tiene código para dar de alta pacientes.")
           PY
 
+      - name: Reparar eliminación de expedientes archivados en Cobranza
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ["ANDROID_PROJECT_DIR"])
+          js = root / "cobranza-app/src/main/assets/app.js"
+          html = root / "cobranza-app/src/main/assets/index.html"
+          source = js.read_text(encoding="utf-8")
+          old = '<button class="rowbtn ghost" data-view-archive="${a.id}">Ver expediente</button></td></tr>'
+          new = '<button class="rowbtn ghost" data-view-archive="${a.id}">Ver expediente</button> ${isAdmin?`<button class="danger-btn" data-delete-archive="${a.id}">Eliminar archivo</button>`:\'\'}</td></tr>'
+          if 'data-delete-archive' not in source:
+              if old not in source:
+                  raise SystemExit("No se encontró el botón Ver expediente en Cobranza; no se modifica la fuente.")
+              source = source.replace(old, new, 1)
+          handler = """async function deleteArchivedPatient(id){if(!isAdmin){toast('Solo Administración puede eliminar expedientes archivados.');return}const a=archivedPatients.find(x=>String(x.id)===String(id));if(!a)return;const name=a.patient_name||'este expediente';if(!confirm('¿Eliminar definitivamente el expediente archivado de '+name+'?\\n\\nSe eliminará únicamente este registro histórico. No se borrarán pagos de otros clientes ni se tocará el registro activo. Esta acción no se puede deshacer.'))return;try{const {error}=await db.from('patient_account_archive').delete().eq('id',id);if(error)throw error;archivedPatients=archivedPatients.filter(x=>String(x.id)!==String(id));renderArchive();$('archiveAccessMsg').textContent='Archivo actualizado: '+archivedPatients.length+' expediente(s) histórico(s).';toast('Expediente archivado eliminado.')}catch(e){console.error(e);alert('No se pudo eliminar el expediente archivado. Detalle: '+(e.message||'revisa la política RLS DELETE de patient_account_archive.'))}}"""
+          if "async function deleteArchivedPatient(id)" not in source:
+              marker = "function renderActivePatients(){"
+              pos = source.find(marker)
+              if pos < 0:
+                  raise SystemExit("No se encontró el punto seguro para insertar la función de eliminación.")
+              source = source[:pos] + handler + source[pos:]
+          if "data-delete-archive" not in source or "async function deleteArchivedPatient(id)" not in source:
+              raise SystemExit("No se pudo verificar la eliminación de expedientes archivados.")
+          source += "\\ndocument.addEventListener('click',e=>{const b=e.target.closest('[data-delete-archive]');if(b)deleteArchivedPatient(b.dataset.deleteArchive)});\\n"
+          js.write_text(source, encoding="utf-8")
+          page = html.read_text(encoding="utf-8")
+          page = page.replace("app.js?v=1.0.7", "app.js?v=1.0.8").replace("styles.css?v=1.0.7", "styles.css?v=1.0.8")
+          page = page.replace("Versión 1.0.7", "Versión 1.0.8")
+          html.write_text(page, encoding="utf-8")
+          print("Cobranza: acción de eliminar archivo histórico instalada; solo Admin puede ejecutarla.")
+          PY
+
       - name: Aceptar licencias e instalar plataformas necesarias
         if: steps.project.outputs.mode == 'source'
         shell: bash
