@@ -156,7 +156,7 @@ jobs:
                   .in('role', ['registro', 'admin']);
               }
               const { data, error } = roleResult;"""
-          pattern = re.compile(r"""const\\s*\\{\\s*data\\s*,\\s*error\\s*\\}\\s*=\\s*await\\s+db\\.from\\(['"]app_user_roles['"]\\)\\s*\\.select\\(['"]role['"]\\)\\s*\\.eq\\(['"]user_id['"]\\s*,\\s*candidateUser\\.id\\)\\s*\\.in\\(['"]role['"]\\s*,\\s*\\[['"]registro['"]\\s*,\\s*['"]admin['"]\\]\\);""")
+          pattern = re.compile(r"""const\s*\{\s*data\s*,\s*error\s*\}\s*=\s*await\s+db\.from\(['"]app_user_roles['"]\)\s*\.select\(['"]role['"]\)\s*\.eq\(['"]user_id['"]\s*,\s*candidateUser\.id\)\s*\.in\(['"]role['"]\s*,\s*\[['"]registro['"]\s*,\s*['"]admin['"]\]\);""")
           s, count = pattern.subn(new_block, s, count=1)
           if not count and "id_usuario" not in s:
               raise SystemExit("No se pudo aplicar la compatibilidad de roles de Registro.")
