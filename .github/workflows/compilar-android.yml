@@ -332,36 +332,34 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import os, re
+          import os
           root = Path(os.environ["ANDROID_PROJECT_DIR"])
-
-          # Evita duplicar el botón si se recompila el mismo ZIP.
           pages = [
               root / "registro-app/src/main/assets/registro-web/index.html",
               root / "cobranza-app/src/main/assets/index.html",
               root / "panel-apk/src/main/assets/index.html",
           ]
           button = '<button type="button" class="dental-jg-back-panel" aria-label="Volver al panel" onclick="try{window.parent.postMessage(\'dental-jg-back\',\'*\')}catch(e){}">← Volver al panel</button>'
-          style = '<style>.dental-jg-back-panel{display:inline-flex;align-items:center;gap:.5rem;margin:12px 0;padding:10px 14px;border:1px solid #20c9bd;border-radius:12px;background:#062f35;color:#eaffff;font:600 14px system-ui;cursor:pointer}.dental-jg-back-panel:focus-visible{outline:3px solid #20c9bd;outline-offset:2px}</style>'
+          style = '<style>.dental-jg-back-panel{display:inline-flex;align-items:center;margin:12px 0;padding:10px 14px;border:1px solid #20c9bd;border-radius:12px;background:#062f35;color:#eaffff;font:600 14px system-ui;cursor:pointer}.dental-jg-back-panel:focus-visible{outline:3px solid #20c9bd;outline-offset:2px}</style>'
           for page in pages:
               if not page.is_file():
                   raise SystemExit(f"Falta la página del módulo: {page}")
               html = page.read_text(encoding="utf-8")
               if "dental-jg-back-panel" not in html:
-                  body = re.search(r"<body\\b[^>]*>", html, flags=re.I)
-                  if not body:
+                  start = html.lower().find("<body")
+                  end = html.find(">", start)
+                  if start < 0 or end < 0:
                       raise SystemExit(f"No se encontró <body> en {page}")
-                  html = html[:body.end()] + "\\n" + style + "\\n" + button + "\\n" + html[body.end():]
+                  nl = chr(10)
+                  html = html[:end+1] + nl + style + nl + button + nl + html[end+1:]
                   page.write_text(html, encoding="utf-8")
               print(f"Navegación de regreso revisada: {page.relative_to(root)}")
-
-          # No mostrar una marca duplicada junto al logotipo en la cabecera de Admon.
           panel = root / "panel-apk/src/main/assets/index.html"
           html = panel.read_text(encoding="utf-8")
           html = html.replace('<span class="brand-name">DENTAL JG</span>', '')
           html = html.replace('<span class="logo-text">DENTAL JG</span>', '')
           panel.write_text(html, encoding="utf-8")
-          print("Correcciones visuales aplicadas sin cambiar permisos ni datos.")
+          print("Correcciones visuales aplicadas.")
           PY
 
       - name: Aceptar licencias e instalar plataformas necesarias
