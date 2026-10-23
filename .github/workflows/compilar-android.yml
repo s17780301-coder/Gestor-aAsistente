@@ -325,41 +325,43 @@ jobs:
           print("Admon mostrará el motivo real del rechazo de acceso o un error de conexión.")
           PY
 
-      - name: Aplicar correcciones visuales y navegación a módulos Android
+      - name: Retirar botón de regreso al panel de los módulos Android
         if: steps.project.outputs.mode == 'source'
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import os
+          import os, re
           root = Path(os.environ["ANDROID_PROJECT_DIR"])
           pages = [
               root / "registro-app/src/main/assets/registro-web/index.html",
               root / "cobranza-app/src/main/assets/index.html",
               root / "panel-apk/src/main/assets/index.html",
           ]
-          button = '<button type="button" class="dental-jg-back-panel" aria-label="Volver al panel" onclick="try{window.parent.postMessage(\'dental-jg-back\',\'*\')}catch(e){}">← Volver al panel</button>'
-          style = '<style>.dental-jg-back-panel{display:inline-flex;align-items:center;margin:12px 0;padding:10px 14px;border:1px solid #20c9bd;border-radius:12px;background:#062f35;color:#eaffff;font:600 14px system-ui;cursor:pointer}.dental-jg-back-panel:focus-visible{outline:3px solid #20c9bd;outline-offset:2px}</style>'
           for page in pages:
               if not page.is_file():
                   raise SystemExit(f"Falta la página del módulo: {page}")
               html = page.read_text(encoding="utf-8")
-              if "dental-jg-back-panel" not in html:
-                  start = html.lower().find("<body")
-                  end = html.find(">", start)
-                  if start < 0 or end < 0:
-                      raise SystemExit(f"No se encontró <body> en {page}")
-                  nl = chr(10)
-                  html = html[:end+1] + nl + style + nl + button + nl + html[end+1:]
-                  page.write_text(html, encoding="utf-8")
-              print(f"Navegación de regreso revisada: {page.relative_to(root)}")
+              # Quitar exclusivamente el control de navegación inyectado en la compilación anterior.
+              html, buttons = re.subn(
+                  r'<button\b[^>]*class=["\'][^"\']*dental-jg-back-panel[^"\']*["\'][^>]*>.*?</button>',
+                  '', html, flags=re.I | re.S
+              )
+              html, styles = re.subn(
+                  r'<style>[^<]*\.dental-jg-back-panel\s*\{.*?</style>',
+                  '', html, flags=re.I | re.S
+              )
+              # Si el estilo tenía saltos de línea o reglas de foco, retirar el bloque completo.
+              html = re.sub(r'<style>.*?dental-jg-back-panel.*?</style>', '', html, flags=re.I | re.S)
+              page.write_text(html, encoding="utf-8")
+              print(f"{page.relative_to(root)}: retirados {buttons} botones y {styles} estilos de regreso al panel.")
           panel = root / "panel-apk/src/main/assets/index.html"
           html = panel.read_text(encoding="utf-8")
           html = html.replace('<span class="brand-name">DENTAL JG</span>', '')
           html = html.replace('<span class="logo-text">DENTAL JG</span>', '')
           panel.write_text(html, encoding="utf-8")
-          print("Correcciones visuales aplicadas.")
+          print("No se insertará ningún botón 'Volver al panel' en los APK.")
           PY
 
       - name: Aceptar licencias e instalar plataformas necesarias
