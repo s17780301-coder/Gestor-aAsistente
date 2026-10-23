@@ -599,11 +599,13 @@ jobs:
           # Los versionCode de los módulos han evolucionado con el proyecto.
           # Aceptar tanto el valor de origen del ZIP 1.0.6 como el ya incrementado
           # hace que el paso sea seguro ante reintentos y no rebaje versiones.
+          # Usar versionCodes claramente superiores a los de las compilaciones anteriores
+          # para evitar que Android rechace la actualización como downgrade.
           version_updates = {
-              'gestor-app': (19, 20),
-              'panel-apk': (9, 10),
-              'cobranza-app': (5, 6),
-              'registro-app': (5, 6),
+              'gestor-app': (19, 1007),
+              'panel-apk': (9, 1007),
+              'cobranza-app': (5, 1007),
+              'registro-app': (5, 1007),
           }
           for module, (old_code, new_code) in version_updates.items():
               gradle = root / module / 'build.gradle'
