@@ -997,7 +997,8 @@
 +        roleResult = await db.from('app_user_roles')
 +          .select('role')
 +          .eq('id_usuario', candidateUser.id)
-+          .in('role', ['registro', 'admin']);+      }
++          .in('role', ['registro', 'admin']);
++      }
 +      const { data, error } = roleResult;
  
        if (user && user.id !== candidateUser.id) return false;
