@@ -417,7 +417,7 @@ jobs:
           source = source.replace("||!treatment", "")
           source = source.replace("p_treatment:treatment", "p_treatment:'No especificado'")
           source = source.replace("tabulator=Number($('tabulator').value||0)", "tabulator=0")
-          if 'patientFullName' not in source or "$('treatment')" in source or 'p_treatment:null' not in source or 'p_tabulator:tabulator' not in source or 'isJunkPolicyType' not in source:
+          if 'patientFullName' not in source or 'p_treatment:' not in source or 'No especificado' not in source or 'p_tabulator:tabulator' not in source or 'isJunkPolicyType' not in source:
 
               raise SystemExit("No se pudo conectar el campo Tratamiento con el registro de paciente.")
           js.write_text(source, encoding="utf-8")
