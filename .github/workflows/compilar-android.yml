@@ -413,7 +413,7 @@ jobs:
           source = source.replace("p_name:name,p_phone:phone,p_treatment:policy,", "p_name:name,p_phone:phone,p_treatment:treatment,");
           # Se elimina el campo visible de tratamiento y el importe de tabulador.
           # Se conserva la firma del RPC para compatibilidad, enviando tratamiento nulo y tabulador 0.
-          source = source.replace(",treatment=$('treatment').value", "")
+          source = source.replace(", treatment=$('treatment').value, ", ", ")
           source = source.replace("||!treatment", "")
           source = source.replace("p_treatment:treatment", "p_treatment:'No especificado'")
           source = source.replace("tabulator=Number($('tabulator').value||0)", "tabulator=0")
