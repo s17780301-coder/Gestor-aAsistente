@@ -7,6 +7,7 @@ on:
       - '*.zip'
       - '**/*.zip'
       - '.github/workflows/compilar-android.yml'
+      - 'patches/**'
   workflow_dispatch:
 
 permissions:
