@@ -175,35 +175,30 @@ jobs:
               raise SystemExit("No se encontró la inicialización de sesión de Admon; se cancela la compilación.")
           p.write_text(s, encoding="utf-8")
 
-          # Función de Supabase: my_roles acepta ambas variantes de columna sin relajar permisos.
+          # Función Supabase my_roles: mantener comportamiento y soportar ambos nombres de columna.
           p = root / "supabase/functions/administrar-usuarios/index.ts"
-          if p.is_file():
-              s = p.read_text(encoding="utf-8")
-              old_role_query = '''if (action === "my_roles") {
-                const { data: roleRows, error: myRolesError } = await adminClient
-                  .from("app_user_roles")
-                  .select("role")
-                  .eq("user_id", callerData.user.id);'''
-              new_role_query = '''if (action === "my_roles") {
-                let roleResult = await adminClient
-                  .from("app_user_roles")
-                  .select("role")
-                  .eq("user_id", callerData.user.id);
-                if (roleResult.error && /user_id|column|schema cache|does not exist/i.test(roleResult.error.message || "")) {
-                  roleResult = await adminClient
-                    .from("app_user_roles")
-                    .select("role")
-                    .eq("id_usuario", callerData.user.id);
-                }
-                const { data: roleRows, error: myRolesError } = roleResult;'''
-              if old_role_query in s:
-                  s = s.replace(old_role_query, new_role_query, 1)
-              elif "action === \"my_roles\"" in s and ".eq(\"id_usuario\", callerData.user.id)" not in s[s.find('if (action === "my_roles")'):s.find("Todas las acciones restantes",s.find('if (action === "my_roles")'))]:
-                  raise SystemExit("No se pudo aplicar my_roles a administrar-usuarios/index.ts.")
-              p.write_text(s, encoding="utf-8")
-          else:
+          if not p.is_file():
               raise SystemExit("Falta supabase/functions/administrar-usuarios/index.ts.")
-
+          s = p.read_text(encoding="utf-8")
+          pattern = re.compile(r'''if \(action === "my_roles"\) \{\s*const \{ data: roleRows, error: myRolesError \} = await adminClient\s*\.from\("app_user_roles"\)\s*\.select\("role"\)\s*\.eq\("user_id", callerData\.user\.id\);''')
+          new_role_query = '''if (action === "my_roles") {
+            let roleResult = await adminClient
+              .from("app_user_roles")
+              .select("role")
+              .eq("user_id", callerData.user.id);
+            if (roleResult.error && /user_id|column|schema cache|does not exist/i.test(roleResult.error.message || "")) {
+              roleResult = await adminClient
+                .from("app_user_roles")
+                .select("role")
+                .eq("id_usuario", callerData.user.id);
+            }
+            const { data: roleRows, error: myRolesError } = roleResult;'''
+          s, count = pattern.subn(new_role_query, s, count=1)
+          if count == 0 and "const { data: roleRows, error: myRolesError } = await adminClient" in s:
+              raise SystemExit("No se pudo adaptar la consulta my_roles de Supabase.")
+          p.write_text(s, encoding="utf-8")
+          print("Compatibilidad de roles preparada en Supabase.")
+          
           # Invalidar caché web y reflejar la versión de las APK nuevas.
           for rel in ["panel-apk/src/main/assets/index.html",
                       "registro-app/src/main/assets/registro-web/index.html",
