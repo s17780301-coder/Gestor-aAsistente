@@ -394,7 +394,7 @@ jobs:
           </script>"""
           page = page[:start_form] + form + page[end_form:]
           page = page.replace('styles.css?v=1.0.6', 'styles.css?v=1.0.9').replace('config.js?v=1.0.6', 'config.js?v=1.0.9').replace('app.js?v=1.0.6', 'app.js?v=1.0.9').replace('styles.css?v=1.0.7', 'styles.css?v=1.0.9').replace('config.js?v=1.0.7', 'config.js?v=1.0.9').replace('app.js?v=1.0.7', 'app.js?v=1.0.9').replace('Versión 1.0.7', 'Versión 1.0.9')
-          if page.count('id="tabulator"') != 1 or page.count('id="patientFullName"') != 1 or page.count('id="treatment"') != 1 or 'Nombre completo del paciente (nombres y apellidos)' not in page:
+          if page.count('id="patientFullName"') != 1 or 'Nombre completo del paciente (nombres y apellidos)' not in page or 'Costos y formas de pago' not in page or 'Monto total del recibo' not in page or 'Importe del tabulador' in page or 'id="treatment"' in page:
               raise SystemExit("El formulario de Registro contiene campos duplicados o falta el nombre completo.")
           html.write_text(page, encoding="utf-8")
           source = js.read_text(encoding="utf-8")
