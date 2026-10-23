@@ -116,6 +116,113 @@ jobs:
           print("Botón Registro de roles normalizado sin alterar su acción.")
           PY
 
+      - name: Reparar validación de roles y sesión con la fuente 1.0.7
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+
+          root = Path(os.environ["ANDROID_PROJECT_DIR"])
+
+          # Cobranza: no abrir el panel hasta que se valide el rol permitido.
+          p = root / "cobranza-app/src/main/assets/app.js"
+          s = p.read_text(encoding="utf-8")
+          login_start = "async function login(email,password){"
+          logout_start = "async function logout(){"
+          i, j = s.find(login_start), s.find(logout_start)
+          if i < 0 or j <= i:
+              raise SystemExit("No se encontró el bloque de acceso de Cobranza; se cancela la compilación.")
+          replacement = """async function login(email,password){$('loginMsg').textContent='Validando…';if(!cfg.supabaseUrl||!cfg.supabaseAnonKey){$('loginMsg').textContent='Falta configurar config.js de Cobranza';return}if(!db)db=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,storage:window.localStorage}});let result;try{result=await db.auth.signInWithPassword({email,password})}catch(e){$('loginMsg').textContent='No se pudo contactar Supabase. Revisa internet e inténtalo otra vez.';return}let {data,error}=result;if(error){$('loginMsg').textContent='No se pudo iniciar sesión: '+(error.message||'revisa correo y contraseña');return}user=data.user;await start()}async function readRoles(uid){let r=await db.from('app_user_roles').select('role').eq('user_id',uid);if(r.error&&/user_id|column|schema cache|does not exist/i.test(r.error.message||''))r=await db.from('app_user_roles').select('role').eq('id_usuario',uid);if(r.error)throw r.error;return (r.data||[]).map(x=>String(x.role||'').trim().toLowerCase())}async function start(){if(!user)return;$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');$('loginMsg').textContent='Verificando permisos…';try{const userRoles=await readRoles(user.id);currentRole=['admin','cobranza','registro','gestor'].find(role=>userRoles.includes(role))||'';if(!['admin','cobranza'].includes(currentRole)){await db.auth.signOut();user=null;currentRole='';isAdmin=false;canManageClients=false;$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');$('loginMsg').textContent='Acceso denegado: esta aplicación requiere el rol Cobranza o Administración. Pide que te asignen el permiso correcto.';return}isAdmin=userRoles.includes('admin');canManageClients=['admin','cobranza'].some(role=>userRoles.includes(role));$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');connection(false,'Conectando con Supabase…');try{await loadSettings()}catch(e){console.error(e);toast('Sesión válida; falta revisar la configuración de recibos.')}await load(true);await loadPortfolioData();await loadClinics();realtime();page('home')}catch(e){console.error('No se pudieron verificar los permisos de Cobranza',e);await db.auth.signOut();user=null;currentRole='';isAdmin=false;canManageClients=false;$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');$('loginMsg').textContent='No se pudieron verificar tus permisos en Supabase: '+(e.message||'error de consulta')+'. Comprueba la columna user_id/id_usuario y los permisos de lectura de app_user_roles.'}}"""
+          s = s[:i] + replacement + s[j:]
+          if "async function readRoles(uid)" not in s or ".eq('id_usuario',uid)" not in s or "requiere el rol Cobranza o Administración" not in s:
+              raise SystemExit("Falló la verificación del parche de acceso de Cobranza.")
+          p.write_text(s, encoding="utf-8")
+
+          # Registro: consulta user_id y cae a id_usuario solo si el esquema lo requiere.
+          p = root / "registro-app/src/main/assets/registro-web/app.js"
+          s = p.read_text(encoding="utf-8")
+          old_block = """const { data, error } = await db.from('app_user_roles')
+                .select('role')
+                .eq('user_id', candidateUser.id)
+                .in('role', ['registro', 'admin']);"""
+          new_block = """// La tabla puede usar user_id o id_usuario según la instalación.
+              let roleResult = await db.from('app_user_roles')
+                .select('role')
+                .eq('user_id', candidateUser.id)
+                .in('role', ['registro', 'admin']);
+              if (roleResult.error && /user_id|column|schema cache|does not exist/i.test(roleResult.error.message || '')) {
+                roleResult = await db.from('app_user_roles')
+                  .select('role')
+                  .eq('id_usuario', candidateUser.id)
+                  .in('role', ['registro', 'admin']);
+              }
+              const { data, error } = roleResult;"""
+          if old_block in s:
+              s = s.replace(old_block, new_block, 1)
+          elif ".eq('id_usuario', candidateUser.id)" not in s:
+              raise SystemExit("No se pudo aplicar la compatibilidad de roles de Registro.")
+          p.write_text(s, encoding="utf-8")
+
+          # Admon: restaurar sesiones solo después de verificar rol admin.
+          p = root / "panel-apk/src/main/assets/app.js"
+          s = p.read_text(encoding="utf-8")
+          old_init = """if(configured){try{client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});client.auth.getSession().then(({data,error})=>{if(!error&&data&&data.session){showApp();load(true);realtime();}}).catch(err=>console.warn('No se pudo restaurar la sesión',err));client.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'&&session&&$('appView').classList.contains('hidden')){showApp();load(true);realtime();}});}catch(err){console.error('No se pudo inicializar la sesión',err);}}"""
+          new_init = """if(configured){try{client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});client.auth.getSession().then(({data,error})=>{if(!error&&data&&data.session)restoreAdminSession(data.session);}).catch(err=>console.warn('No se pudo restaurar la sesión',err));client.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'&&session&&$('appView').classList.contains('hidden'))restoreAdminSession(session);if(event==='SIGNED_OUT'){$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');}});}catch(err){console.error('No se pudo inicializar la sesión',err);}}"""
+          helper = """async function restoreAdminSession(session){if(!session||!client)return;try{const {data,error}=await client.functions.invoke('administrar-usuarios',{body:{action:'my_roles'}});if(error)throw error;const roles=(data?.roles||[]).map(r=>String(r).toLowerCase());if(!roles.includes('admin')){await client.auth.signOut();msg('Acceso denegado: esta cuenta no tiene rol de Administración.');return;}const {data:userData}=await client.auth.getUser();$('ownCurrentEmail').value=userData?.user?.email||'';showApp();await load(true);await loadAdminUsers();realtime();}catch(err){console.error('No se pudo verificar el rol al restaurar la sesión',err);await client.auth.signOut();msg('No se pudo verificar el permiso de Administración. Inicia sesión de nuevo o revisa la función administrar-usuarios.');}}"""
+          if old_init in s:
+              s = s.replace(old_init, helper + old_init.replace("{showApp();load(true);realtime();}", "restoreAdminSession(session);"), 1)
+          elif "async function restoreAdminSession(session)" not in s:
+              raise SystemExit("No se encontró la inicialización de sesión de Admon; se cancela la compilación.")
+          p.write_text(s, encoding="utf-8")
+
+          # Función de Supabase: my_roles acepta ambas variantes de columna sin relajar permisos.
+          p = root / "supabase/functions/administrar-usuarios/index.ts"
+          if p.is_file():
+              s = p.read_text(encoding="utf-8")
+              old_role_query = '''if (action === "my_roles") {
+                const { data: roleRows, error: myRolesError } = await adminClient
+                  .from("app_user_roles")
+                  .select("role")
+                  .eq("user_id", callerData.user.id);'''
+              new_role_query = '''if (action === "my_roles") {
+                let roleResult = await adminClient
+                  .from("app_user_roles")
+                  .select("role")
+                  .eq("user_id", callerData.user.id);
+                if (roleResult.error && /user_id|column|schema cache|does not exist/i.test(roleResult.error.message || "")) {
+                  roleResult = await adminClient
+                    .from("app_user_roles")
+                    .select("role")
+                    .eq("id_usuario", callerData.user.id);
+                }
+                const { data: roleRows, error: myRolesError } = roleResult;'''
+              if old_role_query in s:
+                  s = s.replace(old_role_query, new_role_query, 1)
+              elif "action === \"my_roles\"" in s and ".eq(\"id_usuario\", callerData.user.id)" not in s[s.find('if (action === "my_roles")'):s.find("Todas las acciones restantes",s.find('if (action === "my_roles")'))]:
+                  raise SystemExit("No se pudo aplicar my_roles a administrar-usuarios/index.ts.")
+              p.write_text(s, encoding="utf-8")
+          else:
+              raise SystemExit("Falta supabase/functions/administrar-usuarios/index.ts.")
+
+          # Invalidar caché web y reflejar la versión de las APK nuevas.
+          for rel in ["panel-apk/src/main/assets/index.html",
+                      "registro-app/src/main/assets/registro-web/index.html",
+                      "cobranza-app/src/main/assets/index.html"]:
+              p = root / rel
+              s = p.read_text(encoding="utf-8")
+              if rel.startswith("panel-apk"):
+                  s = s.replace("1.0.6.6", "1.0.7.7").replace("1.0.6.7", "1.0.7.7")
+              else:
+                  s = s.replace("?v=1.0.6", "?v=1.0.7")
+              s = s.replace("Versión 1.0.6", "Versión 1.0.7")
+              p.write_text(s, encoding="utf-8")
+
+          print("Correcciones de acceso 1.0.7 verificadas en Cobranza, Registro y Admon.")
+          PY
+
       - name: Corregir edición y guardado del correo de la cuenta Admon
         if: steps.project.outputs.mode == 'source'
         shell: bash
@@ -291,9 +398,10 @@ jobs:
               # Solo subirlo hasta el mínimo requerido; jamás rebajarlo.
               target_code = max(current_code, new_code)
               updated = source[:code_match.start(1)] + str(target_code) + source[code_match.end(1):]
-              # Conservar el versionName del ZIP; comprobar que existe.
-              if not re.search(r"\bversionName\s+['\"][^'\"]+['\"]", updated):
-                  raise SystemExit(f"No existe versionName en {module}")
+              # Toda esta compilación se etiqueta como 1.0.7 sin rebajar versionCode.
+              updated, name_count = re.subn(r"(\bversionName\s+['\"])[^'\"]+(['\"])", r"\g<1>1.0.7\2", updated, count=1)
+              if name_count != 1:
+                  raise SystemExit(f"No existe versionName modificable en {module}")
               # Añadir firma debug común solo si el módulo aún no tiene configuración estable.
               if not re.search(r'\bstableDebug\s*\{', updated):
                   updated = updated.rstrip() + """
