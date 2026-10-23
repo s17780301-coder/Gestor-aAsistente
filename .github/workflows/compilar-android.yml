@@ -363,20 +363,35 @@ jobs:
             </div>
           </section>
           <section class="form-section form-section-wide">
-            <div class="section-heading"><span class="section-step">03</span><div><h3>Tratamiento y pagos</h3><p>Configura el tratamiento y la forma de pago acordada.</p></div></div>
+            <div class="section-heading"><span class="section-step">03</span><div><h3>Costos y formas de pago</h3><p>Define la periodicidad, forma de pago y cálculo automático de los importes.</p></div></div>
             <div class="section-grid">
-              <label>Tratamiento *<select id="treatment" required><option value="">Selecciona tratamiento</option><option value="Básico">Básico</option><option value="Orto">Orto</option><option value="VIP">VIP</option><option value="Damon">Damon</option></select></label>
               <label>Periodicidad de pago *<select id="paymentMode" required><option value="quincenal">Quincenal</option><option value="mensual">Mensual</option></select></label>
               <label>Forma de pago *<select id="paymentMethod" required><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select></label>
-              <label>Importe del tabulador ($) *<input id="tabulator" type="number" min="0" step="0.01" value="0" required></label>
               <label><span id="installmentAmountLabel">Cantidad quincenal *</span><span class="money-input"><span>$</span><input id="installmentAmount" type="number" min="0.01" step="0.01" required></span></label>
               <label><span id="installmentsLabel">Tabulador (número de quincenas) *</span><input id="installments" type="number" min="1" step="1" required></label>
               <label>Fecha del primer pago *<input id="firstPaymentDate" type="date" required></label>
-              <label>Monto total de la póliza *<span class="money-input"><span>$</span><input id="policyTotal" type="number" min="0.01" step="0.01" required readonly></span></label>
+              <label>Monto total del recibo *<span class="money-input"><span>$</span><input id="policyTotal" type="number" min="0.01" step="0.01" required readonly></span><small>Se calcula automáticamente: importe por pago × número de pagos.</small></label>
             </div>
           </section>
           <div class="form-actions"><button id="savePolicy" class="secondary" type="button">Guardar tipo de póliza</button><button id="save" type="submit">Guardar cliente</button></div>
-          </form>"""
+          </form>
+          <script>
+          (function(){
+            const amount=document.getElementById('installmentAmount');
+            const count=document.getElementById('installments');
+            const total=document.getElementById('policyTotal');
+            if(!amount||!count||!total)return;
+            const calculateTotal=function(){
+              const a=Number(amount.value||0);
+              const n=parseInt(count.value||'0',10);
+              total.value=(a>0&&n>0)?(Math.round(a*n*100)/100).toFixed(2):'';
+              total.dispatchEvent(new Event('change',{bubbles:true}));
+            };
+            amount.addEventListener('input',calculateTotal);
+            count.addEventListener('input',calculateTotal);
+            calculateTotal();
+          })();
+          </script>"""
           page = page[:start_form] + form + page[end_form:]
           page = page.replace('styles.css?v=1.0.6', 'styles.css?v=1.0.9').replace('config.js?v=1.0.6', 'config.js?v=1.0.9').replace('app.js?v=1.0.6', 'app.js?v=1.0.9').replace('styles.css?v=1.0.7', 'styles.css?v=1.0.9').replace('config.js?v=1.0.7', 'config.js?v=1.0.9').replace('app.js?v=1.0.7', 'app.js?v=1.0.9').replace('Versión 1.0.7', 'Versión 1.0.9')
           if page.count('id="tabulator"') != 1 or page.count('id="patientFullName"') != 1 or page.count('id="treatment"') != 1 or 'Nombre completo del paciente (nombres y apellidos)' not in page:
@@ -396,7 +411,14 @@ jobs:
           source = source.replace("const holderName=$('holderName').value.trim(), name=$('patientFullName').value.trim().replace(/\\s+/g,' '), nameParts=name.split(' '), firstNames=nameParts.length>1?nameParts.slice(0,-1).join(' '):name, surnames=nameParts.length>1?nameParts[nameParts.length-1]:'', clinic=$('clinic').value.trim(), policy=$('policy').value.trim().replace(/\\s+/g,' '), policyNumber=$('policyNumber').value.trim(), assignedManagerId=$('assignedManager').value, address=$('address').value.trim(), phone=$('phone').value.trim(), paymentMode=$('paymentMode').value, paymentMethod=$('paymentMethod').value, tabulator=Number($('tabulator').value||0), installmentAmount=Number($('installmentAmount').value||0), installments=parseInt($('installments').value||'0',10), firstPaymentDate=$('firstPaymentDate').value, policyTotal=Number($('policyTotal').value||0);", "const holderName=$('holderName').value.trim().replace(/\\s+/g,' '), name=$('patientFullName').value.trim().replace(/\\s+/g,' '), nameParts=name.split(' '), firstNames=nameParts.length>1?nameParts.slice(0,-1).join(' '):name, surnames=nameParts.length>1?nameParts[nameParts.length-1]:'', clinic=$('clinic').value.trim(), policy=$('policy').value.trim().replace(/\\s+/g,' '), policyNumber=$('policyNumber').value.trim(), assignedManagerId=$('assignedManager').value, address=$('address').value.trim(), phone=$('phone').value.trim(), treatment=$('treatment').value, paymentMode=$('paymentMode').value, paymentMethod=$('paymentMethod').value, tabulator=Number($('tabulator').value||0), installmentAmount=Number($('installmentAmount').value||0), installments=parseInt($('installments').value||'0',10), firstPaymentDate=$('firstPaymentDate').value, policyTotal=Number($('policyTotal').value||0);");
           source = source.replace("!paymentMode||!paymentMethod||!firstPaymentDate", "!treatment||!paymentMode||!paymentMethod||!firstPaymentDate");
           source = source.replace("p_name:name,p_phone:phone,p_treatment:policy,", "p_name:name,p_phone:phone,p_treatment:treatment,");
-          if "treatment=$('treatment').value" not in source or "p_treatment:treatment" not in source or "!treatment||!paymentMode" not in source:
+          # Se elimina el campo visible de tratamiento y el importe de tabulador.
+          # Se conserva la firma del RPC para compatibilidad, enviando tratamiento nulo y tabulador 0.
+          source = source.replace(",treatment=$('treatment').value", "")
+          source = source.replace("||!treatment", "")
+          source = source.replace("p_treatment:treatment", "p_treatment:null")
+          source = source.replace("tabulator=Number($('tabulator').value||0)", "tabulator=0")
+          if 'patientFullName' not in source or "$('treatment')" in source or 'p_treatment:null' not in source or 'p_tabulator:tabulator' not in source or 'isJunkPolicyType' not in source:
+
               raise SystemExit("No se pudo conectar el campo Tratamiento con el registro de paciente.")
           js.write_text(source, encoding="utf-8")
           css = html.parent / "styles.css"
