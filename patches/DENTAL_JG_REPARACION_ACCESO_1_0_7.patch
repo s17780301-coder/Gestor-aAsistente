@@ -1,0 +1,1025 @@
+--- a/DENTAL_JG_10_8_103_ROLES_GESTOR_SEGURIDAD.sql
++++ b/DENTAL_JG_10_8_103_ROLES_GESTOR_SEGURIDAD.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.103 — roles de gestor y clave de gestor
+ -- Ejecutar en Supabase SQL Editor después de respaldar la base. No borra datos.
+ alter table public.collection_managers add column if not exists manager_key text;
+--- a/DENTAL_JG_10_8_10_REGISTRO_FOLIO.sql
++++ b/DENTAL_JG_10_8_10_REGISTRO_FOLIO.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.10: campos de Registro y folio de sistema.
+ create sequence if not exists public.dental_jg_patient_folio_seq;
+ alter table public.patients add column if not exists folio text;
+--- a/DENTAL_JG_10_8_11_CORRECCIONES.sql
++++ b/DENTAL_JG_10_8_11_CORRECCIONES.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.11 — correcciones solicitadas
+ -- Ejecutar una sola vez (o volver a ejecutar sin borrar los datos existentes).
+ -- IMPORTANTE: la eliminación definitiva borra cliente, pagos, recibos y asignaciones; no archiva.
+--- a/DENTAL_JG_10_8_14_FORMULARIO_PAGOS_TITULAR.sql
++++ b/DENTAL_JG_10_8_14_FORMULARIO_PAGOS_TITULAR.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.14: datos de titular y condiciones de pago sincronizadas con Cobranza.
+ -- Ejecutar en Supabase SQL Editor antes de usar los nuevos campos.
+ alter table public.patients add column if not exists holder_name text not null default '';
+--- a/DENTAL_JG_10_8_16_MIGRACION_FORMA_PAGO.sql
++++ b/DENTAL_JG_10_8_16_MIGRACION_FORMA_PAGO.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.16 — migración de forma de pago.
+ -- Ejecutar en Supabase SQL Editor una sola vez después de hacer respaldo.
+ 
+--- a/DENTAL_JG_10_8_20_REGISTRO_FOLIO.sql
++++ b/DENTAL_JG_10_8_20_REGISTRO_FOLIO.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.20: migración de Registro, folio único, titular y forma de pago. Sin mensajería.
+ create sequence if not exists public.dental_jg_patient_folio_seq;
+ alter table public.patients add column if not exists folio text;
+--- a/DENTAL_JG_10_8_21_MIGRACION_GESTORES_POLIZAS.sql
++++ b/DENTAL_JG_10_8_21_MIGRACION_GESTORES_POLIZAS.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.21: número de póliza, gestor asignado y clave de gestor.
+ -- Ejecutar en Supabase SQL Editor. Hacer respaldo antes de aplicar.
+ alter table public.patients add column if not exists policy_type text;
+--- a/DENTAL_JG_10_8_36_PERMISOS_EDITAR_GESTOR.sql
++++ b/DENTAL_JG_10_8_36_PERMISOS_EDITAR_GESTOR.sql
+@@ -1,10 +1,3 @@
+--- AVISO DE COMPATIBILIDAD DENTAL JG 1.0.6
+--- ARCHIVO HISTÓRICO/SUPERSEDIDO: NO EJECUTAR DESPUÉS DE LA MIGRACIÓN INTEGRADA.
+--- Para esta versión, usar únicamente el archivo raíz:
+---   DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql
+--- Este script antiguo conserva políticas/privilegios de versiones anteriores y puede
+--- reabrir permisos que la migración integrada ahora restringe por rol.
+-
+ -- DENTAL JG 10.8.9 — gestores compartidos, importes por gestor y archivo de reportes quincenales.
+ -- Ejecutar UNA vez en Supabase SQL Editor del proyecto conectado a todas las apps.
+ -- No elimina pacientes, pagos ni recibos existentes.
+--- a/DENTAL_JG_10_8_9_REPORTES_GESTORES_QUINCENA.sql
++++ b/DENTAL_JG_10_8_9_REPORTES_GESTORES_QUINCENA.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.9 — gestores compartidos, importes por gestor y archivo de reportes quincenales.
+ -- Ejecutar UNA vez en Supabase SQL Editor del proyecto conectado a todas las apps.
+ -- No elimina pacientes, pagos ni recibos existentes.
+--- a/DENTAL_JG_10_8_ARQUITECTURA_REGISTRO_COBRANZA.sql
++++ b/DENTAL_JG_10_8_ARQUITECTURA_REGISTRO_COBRANZA.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8 — registro centralizado y control quincenal. Migración aditiva.
+ -- Revisar políticas existentes antes de ejecutar en producción. No elimina clientes ni pagos.
+ create extension if not exists pgcrypto;
+--- a/DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql
++++ b/DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql
+@@ -1,6 +1,5 @@
+ -- DENTAL JG 1.0.6 — MIGRACIÓN SQL INTEGRADA CORREGIDA
+ -- ATÓMICA: si falla cualquier comprobación o cambio SQL, PostgreSQL revierte los cambios transaccionales de la migración completa.
+--- Conserva el archivo inmediato de cuentas liquidadas y hace idempotentes reintentos usando el snapshot archivado.
+ -- Respaldar Supabase antes de ejecutar. Ejecutar TODO el archivo una sola vez en el proyecto correcto.
+ -- No ejecutar por fragmentos. No modifica pagos históricos ni recalcula automáticamente los saldos existentes.
+ -- Nota: la secuencia de folios puede avanzar aunque la transacción se revierta; esto solo puede dejar saltos de folio, nunca duplicarlos.
+@@ -35,44 +34,6 @@
+   IF v_missing IS NOT NULL THEN
+     RAISE EXCEPTION 'DENTAL JG 1.0.6: esquema incompatible; faltan columnas: %. No se aplicó ninguna modificación de este preflight.', v_missing;
+   END IF;
+-
+-  -- No crear índices únicos destruyendo la ejecución en una fase tardía:
+-  -- comprobar primero si ya existen recibos duplicados para un mismo pago o programación.
+-  IF EXISTS (
+-    SELECT 1 FROM public.collection_receipts
+-    WHERE payment_id IS NOT NULL
+-    GROUP BY payment_id HAVING count(*) > 1
+-  ) THEN
+-    RAISE EXCEPTION 'DENTAL JG: hay pagos con más de un recibo asociado. Concilia esos duplicados antes de aplicar la migración; no se modificó el esquema.';
+-  END IF;
+-  IF EXISTS (
+-    SELECT 1 FROM public.collection_receipts
+-    WHERE payment_id IS NULL AND scheduled_for IS NOT NULL AND patient_id IS NOT NULL
+-    GROUP BY created_by, patient_id, scheduled_for HAVING count(*) > 1
+-  ) THEN
+-    RAISE EXCEPTION 'DENTAL JG: hay recibos programados duplicados para la misma cuenta, cliente y fecha. Concilia esos duplicados antes de aplicar la migración; no se modificó el esquema.';
+-  END IF;
+-END;
+-$$;
+-
+--- Compatibilidad con el archivo inmediato actualmente instalado.
+--- El trigger auto-archive está diseñado para archivar y retirar de las tablas activas
+--- al cliente cuando el pago liquida la cuenta; se conserva ese comportamiento.
+--- Se comprueba que su función de archivo y la tabla de archivo existan antes de seguir.
+-DO $$
+-DECLARE v_trigger text; v_function text;
+-BEGIN
+-  SELECT t.tgname, p.proname INTO v_trigger, v_function
+-  FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid
+-  WHERE t.tgrelid='public.patients'::regclass AND NOT t.tgisinternal
+-    AND (t.tgname ILIKE '%auto_archive%settled%' OR p.proname ILIKE '%auto_archive%settled%')
+-  LIMIT 1;
+-  IF v_trigger IS NOT NULL AND (
+-    to_regclass('public.patient_account_archive') IS NULL OR
+-    to_regprocedure('public.archive_dental_jg_settled_patient(uuid,numeric)') IS NULL
+-  ) THEN
+-    RAISE EXCEPTION 'DENTAL JG: existe el trigger % (función %), pero falta la tabla o función de archivo que necesita. Corrige el subsistema de archivo antes de continuar; no se aplicó la migración.', v_trigger, v_function;
+-  END IF;
+ END;
+ $$;
+ 
+@@ -110,11 +71,6 @@
+ SET search_path = pg_catalog, public
+ AS $$
+ BEGIN
+-  -- La RPC de Gestor difiere el ajuste de saldo hasta que termina el INSERT de payments.
+-  -- Así el archivo inmediato puede retirar ese pago después sin borrar la fila durante su propio INSERT.
+-  IF TG_OP = 'INSERT' AND COALESCE(current_setting('dental_jg.skip_payment_balance_trigger', true),'0') = '1' THEN
+-    RETURN NEW;
+-  END IF;
+   IF TG_OP = 'INSERT' THEN
+     IF NEW.patient_id IS NOT NULL THEN
+       UPDATE public.patients
+@@ -199,14 +155,6 @@
+ -- Migración aditiva: no modifica pacientes existentes, pagos ni saldos.
+ -- Ejecutar en Supabase después de respaldar y antes de usar la APK/web de Registro corregida.
+ 
+--- Retira las firmas antiguas que permitían registrar pacientes con menos controles
+--- (incluidas versiones que aceptaban admin o no exigían gestor). La app Registro actual
+--- usa la firma de 20 argumentos incluida abajo; actualiza Registro antes de aplicar.
+-DROP FUNCTION IF EXISTS public.register_dental_jg_patient(text,text,text,numeric,integer,numeric,text,text);
+-DROP FUNCTION IF EXISTS public.register_dental_jg_patient(text,text,text,numeric,integer,numeric,text,text,text,text,text,text,text);
+-DROP FUNCTION IF EXISTS public.register_dental_jg_patient(text,text,text,numeric,integer,numeric,text,text,text,text,text,text,text,text,text,numeric,date);
+-DROP FUNCTION IF EXISTS public.register_dental_jg_patient(text,text,text,numeric,integer,numeric,text,text,text,text,text,text,text,text,text,numeric,date,text);
+-
+ CREATE SEQUENCE IF NOT EXISTS public.dental_jg_patient_folio_seq;
+ DO $$
+ DECLARE v_max bigint; v_last bigint; v_called boolean;
+@@ -460,103 +408,35 @@
+ 
+ CREATE OR REPLACE FUNCTION public.dental_jg_manager_insert_payment(p_manager_key text,p_payment jsonb)
+ RETURNS SETOF jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog, public AS $$
+-DECLARE
+-  v_manager uuid;
+-  v_patient public.patients;
+-  v_payment public.payments;
+-  v_operation_id text;
+-  v_amount numeric;
+-  v_requested_patient uuid;
+-  v_archived_patient_id uuid;
+-  v_archived_manager_id uuid;
+-  v_archived_payment jsonb;
+-  v_assigned_manager_id uuid;
+-  v_existing_payment boolean := false;
++DECLARE v_manager uuid; v_patient public.patients; v_payment public.payments; v_operation_id text; v_amount numeric;
+ BEGIN
+   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Inicia sesión para registrar pagos.'; END IF;
+-  IF NOT EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role) IN ('gestor','admin')) THEN
+-    RAISE EXCEPTION 'Esta cuenta no tiene permiso para usar la sincronización de Gestor.';
+-  END IF;
++  IF NOT EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role) IN ('gestor','admin')) THEN RAISE EXCEPTION 'Esta cuenta no tiene permiso para usar la sincronización de Gestor.'; END IF;
+   SELECT m.id INTO v_manager FROM public.collection_managers m
+   WHERE m.active IS DISTINCT FROM false AND m.manager_key=trim(coalesce(p_manager_key,''))
+     AND length(trim(coalesce(p_manager_key,''))) >= 4 LIMIT 1;
+   IF v_manager IS NULL THEN RAISE EXCEPTION 'Clave de gestor incorrecta o gestor inactivo.'; END IF;
+-
+   v_operation_id:=trim(coalesce(p_payment->>'client_operation_id',''));
+   IF v_operation_id='' THEN RAISE EXCEPTION 'El pago no incluye identificador único. Actualiza la aplicación Gestor.'; END IF;
+   v_amount:=(p_payment->>'amount')::numeric;
+-  IF v_amount IS NULL OR v_amount<=0 OR v_amount>9999999999.99 THEN
+-    RAISE EXCEPTION 'El importe debe ser mayor que cero y estar dentro del límite permitido.';
+-  END IF;
+-  v_requested_patient:=nullif(trim(coalesce(p_payment->>'patient_id','')),'')::uuid;
+-  IF v_requested_patient IS NULL THEN RAISE EXCEPTION 'El pago no incluye un cliente válido.'; END IF;
+-
+-  -- Serializa reintentos del mismo pago antes de buscar al paciente: la última cuota puede
+-  -- haber activado el archivo inmediato y retirado ya al cliente de patients.
++  IF v_amount IS NULL OR v_amount<=0 OR v_amount>9999999999.99 THEN RAISE EXCEPTION 'El importe debe ser mayor que cero y estar dentro del límite permitido.'; END IF;
++  -- Autoriza al gestor sobre el paciente antes de consultar un identificador existente.
++  SELECT p.* INTO v_patient FROM public.patients p
++  WHERE p.id=(p_payment->>'patient_id')::uuid AND p.assigned_manager_id=v_manager
++  FOR UPDATE;
++  IF NOT FOUND THEN RAISE EXCEPTION 'El paciente no pertenece a este gestor.'; END IF;
++
+   PERFORM pg_advisory_xact_lock(hashtext('dentaljg-payment-operation:'||v_operation_id));
+   SELECT * INTO v_payment FROM public.payments WHERE client_operation_id=v_operation_id LIMIT 1;
+-  v_existing_payment:=FOUND;
+-  IF v_existing_payment THEN
+-    IF (v_payment.patient_id IS NOT NULL AND v_payment.patient_id IS DISTINCT FROM v_requested_patient)
+-       OR round(v_payment.amount::numeric,2) IS DISTINCT FROM round(v_amount,2) THEN
++  IF FOUND THEN
++    IF v_payment.patient_id IS DISTINCT FROM v_patient.id OR round(v_payment.amount,2)<>round(v_amount,2) THEN
+       RAISE EXCEPTION 'El identificador de operación ya existe con datos diferentes. No se registró otro pago.';
+     END IF;
+-  END IF;
+-
+-  -- Si el pago liquidó la cuenta, el trigger de archivo conserva el pago dentro de
+-  -- patient_account_archive.archive_data y elimina la fila operativa de payments.
+-  -- Se consulta ese snapshot para que un reintento offline siga siendo idempotente.
+-  IF to_regclass('public.patient_account_archive') IS NOT NULL THEN
+-    EXECUTE $archive_query$
+-      SELECT a.original_patient_id,
+-             NULLIF(a.archive_data->'patient'->>'assigned_manager_id','')::uuid,
+-             e.value
+-      FROM public.patient_account_archive a
+-      CROSS JOIN LATERAL jsonb_array_elements(COALESCE(a.archive_data->'payments','[]'::jsonb)) AS e(value)
+-      WHERE e.value->>'client_operation_id'=$1
+-      ORDER BY a.archived_at DESC
+-      LIMIT 1
+-    $archive_query$
+-    INTO v_archived_patient_id, v_archived_manager_id, v_archived_payment
+-    USING v_operation_id;
+-  END IF;
+-
+-  IF v_archived_payment IS NOT NULL THEN
+-    IF v_archived_patient_id IS DISTINCT FROM v_requested_patient
+-       OR v_archived_manager_id IS DISTINCT FROM v_manager
+-       OR round((v_archived_payment->>'amount')::numeric,2) IS DISTINCT FROM round(v_amount,2) THEN
+-      RAISE EXCEPTION 'El identificador de operación ya existe en el archivo con datos diferentes o pertenece a otro gestor.';
+-    END IF;
+-    IF v_existing_payment THEN
+-      RETURN NEXT to_jsonb(v_payment);
+-    ELSE
+-      RETURN NEXT v_archived_payment;
+-    END IF;
+-    RETURN;
+-  END IF;
+-
+-  IF v_existing_payment THEN
+-    SELECT p.assigned_manager_id INTO v_assigned_manager_id
+-    FROM public.patients p WHERE p.id=v_requested_patient;
+-    IF v_assigned_manager_id IS DISTINCT FROM v_manager THEN
+-      RAISE EXCEPTION 'El identificador de operación existe, pero no se pudo validar la cuenta activa o su expediente archivado.';
+-    END IF;
+-    RETURN NEXT to_jsonb(v_payment);
+-    RETURN;
+-  END IF;
+-
+-  SELECT p.* INTO v_patient FROM public.patients p
+-  WHERE p.id=v_requested_patient AND p.assigned_manager_id=v_manager
+-  FOR UPDATE;
+-  IF NOT FOUND THEN RAISE EXCEPTION 'El paciente no pertenece a este gestor o ya fue archivado.'; END IF;
++    RETURN NEXT to_jsonb(v_payment); RETURN;
++  END IF;
+   IF v_amount > GREATEST(COALESCE(v_patient.total,0)-COALESCE(v_patient.paid,0),0) + 0.009 THEN
+     RAISE EXCEPTION 'El pago supera el saldo pendiente actual. Sincroniza el paciente y revisa el historial antes de reintentar.';
+   END IF;
+-
+-  -- Primero guarda el movimiento; el trigger de payments omite solo este INSERT.
+-  -- El INSERT ya concluyó cuando se actualiza el saldo, de modo que el archivo inmediato
+-  -- puede copiar y retirar el pago sin interferir con la sentencia que lo creó.
+-  PERFORM set_config('dental_jg.skip_payment_balance_trigger','1',true);
+   INSERT INTO public.payments(patient_id,patient_name,amount,concept,reference,paid_at,source_device,client_operation_id)
+   VALUES(v_patient.id,
+     coalesce(nullif(trim(concat_ws(' ',nullif(v_patient.first_names,''),nullif(v_patient.surnames,''))),''),v_patient.name),
+@@ -564,10 +444,6 @@
+     coalesce(nullif(p_payment->>'paid_at','')::timestamptz,now()),
+     coalesce(nullif(p_payment->>'source_device',''),'DENTAL JG APK'),v_operation_id)
+   RETURNING * INTO v_payment;
+-  PERFORM set_config('dental_jg.skip_payment_balance_trigger','0',true);
+-  UPDATE public.patients
+-     SET paid=GREATEST(0,COALESCE(paid,0)+v_amount), updated_at=now()
+-   WHERE id=v_patient.id;
+   RETURN NEXT to_jsonb(v_payment);
+ END; $$;
+ 
+@@ -598,46 +474,9 @@
+  SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role) IN ('admin','cobranza'))) WITH CHECK (EXISTS(
+  SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role) IN ('admin','cobranza')));
+ CREATE POLICY dental_jg_staff_delete_patients ON public.patients FOR DELETE TO authenticated USING (EXISTS(
+- SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role)='admin'));
++ SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role) IN ('admin','cobranza')));
+ REVOKE ALL ON public.patients FROM PUBLIC,anon,authenticated;
+ GRANT SELECT,UPDATE,DELETE ON public.patients TO authenticated;
+-
+--- RPC de eliminación permanente: reservada al administrador y transaccional.
+-CREATE OR REPLACE FUNCTION public.delete_patient_permanently(p_patient_id uuid)
+-RETURNS jsonb
+-LANGUAGE plpgsql
+-SECURITY DEFINER
+-SET search_path = pg_catalog, public
+-AS $$
+-DECLARE
+-  p public.patients%rowtype;
+-  v_payments integer := 0;
+-  v_receipts integer := 0;
+-BEGIN
+-  IF auth.uid() IS NULL OR NOT EXISTS (
+-    SELECT 1 FROM public.app_user_roles r
+-    WHERE r.user_id=auth.uid() AND lower(r.role)='admin'
+-  ) THEN
+-    RAISE EXCEPTION 'Solo un administrador puede eliminar definitivamente clientes.';
+-  END IF;
+-  SELECT * INTO p FROM public.patients WHERE id=p_patient_id FOR UPDATE;
+-  IF NOT FOUND THEN RAISE EXCEPTION 'No se encontró el cliente.'; END IF;
+-
+-  DELETE FROM public.collection_portfolio_patients WHERE patient_id=p.id;
+-  IF to_regclass('public.collection_period_patients') IS NOT NULL THEN
+-    EXECUTE 'DELETE FROM public.collection_period_patients WHERE patient_id=$1' USING p.id;
+-  END IF;
+-  DELETE FROM public.collection_receipts WHERE patient_id=p.id;
+-  GET DIAGNOSTICS v_receipts = ROW_COUNT;
+-  DELETE FROM public.payments WHERE patient_id=p.id;
+-  GET DIAGNOSTICS v_payments = ROW_COUNT;
+-  DELETE FROM public.patients WHERE id=p.id;
+-  RETURN jsonb_build_object('success',true,'patient_id',p.id,
+-    'payments_deleted',v_payments,'receipts_deleted',v_receipts);
+-END;
+-$$;
+-REVOKE ALL ON FUNCTION public.delete_patient_permanently(uuid) FROM PUBLIC, anon;
+-GRANT EXECUTE ON FUNCTION public.delete_patient_permanently(uuid) TO authenticated;
+ 
+ CREATE POLICY dental_jg_staff_read_payments ON public.payments FOR SELECT TO authenticated USING (EXISTS(
+  SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role) IN ('admin','cobranza')));
+@@ -663,75 +502,8 @@
+  SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role)='admin')) WITH CHECK (EXISTS(
+  SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role)='admin'));
+ 
+--- Reportes quincenales usados por Cobranza y consultados por Administración.
+-CREATE TABLE IF NOT EXISTS public.collection_quincena_reports (
+-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+-  created_by uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+-  quincena_date date NOT NULL,
+-  manager_id uuid NOT NULL REFERENCES public.collection_managers(id) ON DELETE RESTRICT,
+-  manager_name text NOT NULL DEFAULT '',
+-  report_rows jsonb NOT NULL DEFAULT '[]'::jsonb,
+-  created_at timestamptz NOT NULL DEFAULT now(),
+-  updated_at timestamptz NOT NULL DEFAULT now(),
+-  UNIQUE(created_by,quincena_date,manager_id)
+-);
+-ALTER TABLE public.collection_quincena_reports ENABLE ROW LEVEL SECURITY;
+-REVOKE ALL ON public.collection_quincena_reports FROM PUBLIC, anon, authenticated;
+-GRANT SELECT,INSERT,UPDATE,DELETE ON public.collection_quincena_reports TO authenticated;
+-DO $$ DECLARE pol record; BEGIN
+-  FOR pol IN SELECT policyname FROM pg_policies
+-    WHERE schemaname='public' AND tablename='collection_quincena_reports'
+-  LOOP
+-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.collection_quincena_reports',pol.policyname);
+-  END LOOP;
+-END; $$;
+-CREATE POLICY dental_jg_quincena_reports_role_access ON public.collection_quincena_reports
+-FOR ALL TO authenticated
+-USING (created_by=auth.uid() OR EXISTS(SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role)='admin'))
+-WITH CHECK ((created_by=auth.uid() AND EXISTS(SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role) IN ('admin','cobranza','gestor'))) OR EXISTS(SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role)='admin'));
+-CREATE INDEX IF NOT EXISTS collection_quincena_reports_date_idx ON public.collection_quincena_reports(quincena_date DESC);
+-CREATE INDEX IF NOT EXISTS collection_quincena_reports_manager_idx ON public.collection_quincena_reports(manager_id,quincena_date DESC);
+-
+--- Acceso controlado a recibos: lectura para Administración/Cobranza, edición propia,
+--- y altas exclusivamente mediante RPCs validadas (no INSERT directo desde el cliente).
+-ALTER TABLE public.collection_receipts ENABLE ROW LEVEL SECURITY;
+-REVOKE ALL ON public.collection_receipts FROM PUBLIC, anon, authenticated;
+-GRANT SELECT ON public.collection_receipts TO authenticated;
+-DO $$ DECLARE pol record; BEGIN
+-  FOR pol IN SELECT policyname FROM pg_policies
+-    WHERE schemaname='public' AND tablename='collection_receipts'
+-  LOOP
+-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.collection_receipts',pol.policyname);
+-  END LOOP;
+-END; $$;
+-CREATE POLICY dental_jg_receipts_read_role ON public.collection_receipts FOR SELECT TO authenticated
+-USING (EXISTS(SELECT 1 FROM public.app_user_roles r WHERE r.user_id=auth.uid() AND lower(r.role) IN ('admin','cobranza')));
+--- No hay UPDATE directo desde el cliente: la edición pasa por una RPC validada más abajo.
+-CREATE UNIQUE INDEX IF NOT EXISTS collection_receipts_payment_id_uq
+-  ON public.collection_receipts(payment_id) WHERE payment_id IS NOT NULL;
+-CREATE UNIQUE INDEX IF NOT EXISTS collection_receipts_scheduled_patient_date_uq
+-  ON public.collection_receipts(created_by,patient_id,scheduled_for)
+-  WHERE payment_id IS NULL AND scheduled_for IS NOT NULL;
+-
+--- Los ajustes del folio pertenecen a cada cuenta; el RPC corre con permisos de propietario.
+-ALTER TABLE public.collection_receipt_settings ENABLE ROW LEVEL SECURITY;
+-REVOKE ALL ON public.collection_receipt_settings FROM PUBLIC, anon, authenticated;
+-GRANT SELECT, INSERT, UPDATE ON public.collection_receipt_settings TO authenticated;
+-DO $$ DECLARE pol record; BEGIN
+-  FOR pol IN SELECT policyname FROM pg_policies
+-    WHERE schemaname='public' AND tablename='collection_receipt_settings'
+-  LOOP
+-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.collection_receipt_settings',pol.policyname);
+-  END LOOP;
+-END; $$;
+-CREATE POLICY dental_jg_receipt_settings_own ON public.collection_receipt_settings FOR ALL TO authenticated
+-USING (user_id=auth.uid()) WITH CHECK (user_id=auth.uid());
+ 
+ -- Fase 11: validar recibos contra el paciente/pago real y aceptar gestores compartidos.
+--- Elimina la firma antigua de 11 argumentos que no imponía el nuevo control de rol.
+--- Cobranza actualizado llama la versión de 12 argumentos que sigue a este bloque.
+-DROP FUNCTION IF EXISTS public.create_collection_receipt(uuid,uuid,text,text,numeric,numeric,numeric,numeric,text,text,jsonb);
+-
+ -- Corrige el rechazo de gestores creados por Administración pero seleccionados en Cobranza.
+ CREATE OR REPLACE FUNCTION public.create_collection_receipt(
+   p_payment_id uuid,
+@@ -748,8 +520,8 @@
+   p_manager_id uuid DEFAULT NULL::uuid
+ ) RETURNS public.collection_receipts
+ LANGUAGE plpgsql
+-SECURITY DEFINER
+-SET search_path = pg_catalog, public
++SECURITY INVOKER
++SET search_path = public, pg_temp
+ AS $$
+ DECLARE
+   s public.collection_receipt_settings;
+@@ -769,8 +541,6 @@
+   IF COALESCE(p_previous_balance,0) < 0 OR COALESCE(p_tabulator,0) < 0 OR COALESCE(p_new_balance,0) < 0 THEN
+     RAISE EXCEPTION 'Los importes no pueden ser negativos.';
+   END IF;
+-  IF p_patient_id IS NULL THEN RAISE EXCEPTION 'Selecciona el cliente al que corresponde el recibo.'; END IF;
+-  IF p_payment_amount > COALESCE(p_previous_balance,0) + 0.009 THEN RAISE EXCEPTION 'El recibo no puede superar el saldo pendiente.'; END IF;
+   IF COALESCE(p_tabulator,0) > p_payment_amount THEN RAISE EXCEPTION 'El tabulador/descuento no puede superar el importe del recibo.'; END IF;
+   IF length(COALESCE(p_patient_name,'')) > 200 OR length(COALESCE(p_clinic,'')) > 200 OR length(COALESCE(p_concept,'')) > 200 OR length(COALESCE(p_notes,'')) > 2000 THEN
+     RAISE EXCEPTION 'Uno de los campos de texto supera el límite permitido.';
+@@ -808,7 +578,7 @@
+   v_folio := COALESCE(s.folio_prefix,'JG-') || lpad(s.next_folio::text,greatest(s.folio_digits,length(s.next_folio::text)),'0');
+   UPDATE public.collection_receipt_settings SET next_folio=next_folio+1,updated_at=now() WHERE user_id=auth.uid();
+   INSERT INTO public.collection_receipts(created_by,folio,payment_id,patient_id,manager_id,patient_name,clinic,payment_amount,previous_balance,tabulator,net_amount,new_balance,concept,notes,receipt_snapshot)
+-  VALUES(auth.uid(),v_folio,p_payment_id,p_patient_id,p_manager_id,COALESCE(p_patient_name,''),COALESCE(p_clinic,''),p_payment_amount,COALESCE(p_previous_balance,0),COALESCE(p_tabulator,0),p_payment_amount-COALESCE(p_tabulator,0),GREATEST(0,COALESCE(p_previous_balance,0)-p_payment_amount),COALESCE(p_concept,'Abono'),COALESCE(p_notes,''),COALESCE(p_snapshot,'{}'::jsonb))
++  VALUES(auth.uid(),v_folio,p_payment_id,p_patient_id,p_manager_id,COALESCE(p_patient_name,''),COALESCE(p_clinic,''),p_payment_amount,COALESCE(p_previous_balance,0),COALESCE(p_tabulator,0),p_payment_amount-COALESCE(p_tabulator,0),COALESCE(p_new_balance,0),COALESCE(p_concept,'Abono'),COALESCE(p_notes,''),COALESCE(p_snapshot,'{}'::jsonb))
+   RETURNING * INTO r;
+   RETURN r;
+ END;
+@@ -816,94 +586,6 @@
+ 
+ REVOKE ALL ON FUNCTION public.create_collection_receipt(uuid,uuid,text,text,numeric,numeric,numeric,numeric,text,text,jsonb,uuid) FROM PUBLIC,anon;
+ GRANT EXECUTE ON FUNCTION public.create_collection_receipt(uuid,uuid,text,text,numeric,numeric,numeric,numeric,text,text,jsonb,uuid) TO authenticated;
+-
+--- La edición de recibos también pasa por servidor: impide desvincular un pago real,
+--- asignar el importe de otro pago o editar recibos de otra cuenta.
+-CREATE OR REPLACE FUNCTION public.update_collection_receipt(
+-  p_receipt_id uuid,
+-  p_payment_id uuid,
+-  p_patient_id uuid,
+-  p_manager_id uuid,
+-  p_patient_name text,
+-  p_clinic text,
+-  p_payment_amount numeric,
+-  p_previous_balance numeric,
+-  p_tabulator numeric,
+-  p_new_balance numeric,
+-  p_concept text,
+-  p_notes text,
+-  p_snapshot jsonb
+-) RETURNS public.collection_receipts
+-LANGUAGE plpgsql
+-SECURITY DEFINER
+-SET search_path = pg_catalog, public
+-AS $$
+-DECLARE
+-  r public.collection_receipts;
+-  v_payment_patient uuid;
+-  v_payment_amount numeric;
+-  v_canonical_patient_name text;
+-BEGIN
+-  IF auth.uid() IS NULL OR NOT EXISTS (
+-    SELECT 1 FROM public.app_user_roles ar
+-    WHERE ar.user_id=auth.uid() AND lower(ar.role) IN ('admin','cobranza')
+-  ) THEN
+-    RAISE EXCEPTION 'Esta cuenta no tiene permiso para editar recibos.';
+-  END IF;
+-  SELECT * INTO r FROM public.collection_receipts
+-  WHERE id=p_receipt_id AND created_by=auth.uid() FOR UPDATE;
+-  IF NOT FOUND THEN RAISE EXCEPTION 'El recibo no existe o no pertenece a esta cuenta.'; END IF;
+-  IF p_payment_amount IS NULL OR p_payment_amount<=0 OR p_payment_amount>9999999999.99 THEN
+-    RAISE EXCEPTION 'El importe debe ser mayor que cero y estar dentro del límite permitido.';
+-  END IF;
+-  IF COALESCE(p_previous_balance,0)<0 OR COALESCE(p_tabulator,0)<0 OR COALESCE(p_new_balance,0)<0 OR COALESCE(p_tabulator,0)>p_payment_amount THEN
+-    RAISE EXCEPTION 'Verifica saldo, tabulador e importe del recibo.';
+-  END IF;
+-  IF p_patient_id IS NULL THEN RAISE EXCEPTION 'Selecciona el cliente al que corresponde el recibo.'; END IF;
+-  IF p_payment_amount>COALESCE(p_previous_balance,0)+0.009 THEN RAISE EXCEPTION 'El recibo no puede superar el saldo pendiente.'; END IF;
+-  IF length(COALESCE(p_patient_name,''))>200 OR length(COALESCE(p_clinic,''))>200 OR length(COALESCE(p_concept,''))>200 OR length(COALESCE(p_notes,''))>2000 THEN
+-    RAISE EXCEPTION 'Uno de los campos de texto supera el límite permitido.';
+-  END IF;
+-  IF p_snapshot IS NOT NULL AND jsonb_typeof(p_snapshot)<>'object' THEN
+-    RAISE EXCEPTION 'Los datos de impresión no tienen un formato válido.';
+-  END IF;
+-  IF p_patient_id IS NOT NULL THEN
+-    SELECT COALESCE(NULLIF(trim(concat_ws(' ',NULLIF(trim(pt.first_names),''),NULLIF(trim(pt.surnames),''))),''),NULLIF(trim(pt.name),''))
+-      INTO v_canonical_patient_name FROM public.patients pt WHERE pt.id=p_patient_id;
+-    IF NOT FOUND THEN RAISE EXCEPTION 'El paciente no existe.'; END IF;
+-    IF COALESCE(v_canonical_patient_name,'')<>'' THEN p_patient_name:=v_canonical_patient_name; END IF;
+-  END IF;
+-  IF p_manager_id IS NOT NULL AND NOT EXISTS (
+-    SELECT 1 FROM public.collection_managers m WHERE m.id=p_manager_id AND m.active IS DISTINCT FROM false
+-  ) THEN RAISE EXCEPTION 'El gestor seleccionado no existe o está inactivo.'; END IF;
+-  IF p_payment_id IS NOT NULL THEN
+-    PERFORM pg_advisory_xact_lock(hashtext('dentaljg-payment:'||p_payment_id::text));
+-    SELECT py.patient_id,py.amount INTO v_payment_patient,v_payment_amount FROM public.payments py WHERE py.id=p_payment_id;
+-    IF NOT FOUND THEN RAISE EXCEPTION 'El pago seleccionado no existe.'; END IF;
+-    IF p_patient_id IS NULL OR v_payment_patient IS DISTINCT FROM p_patient_id THEN
+-      RAISE EXCEPTION 'El pago no corresponde al cliente seleccionado.';
+-    END IF;
+-    IF round(v_payment_amount::numeric,2)<>round(p_payment_amount::numeric,2) THEN
+-      RAISE EXCEPTION 'El importe del recibo debe coincidir con el pago registrado.';
+-    END IF;
+-    IF EXISTS (SELECT 1 FROM public.collection_receipts cr WHERE cr.payment_id=p_payment_id AND cr.id<>p_receipt_id) THEN
+-      RAISE EXCEPTION 'Este pago ya tiene otro recibo asociado.';
+-    END IF;
+-  END IF;
+-  UPDATE public.collection_receipts SET
+-    payment_id=p_payment_id, patient_id=p_patient_id, manager_id=p_manager_id,
+-    patient_name=COALESCE(p_patient_name,''), clinic=COALESCE(p_clinic,''),
+-    payment_amount=p_payment_amount, previous_balance=COALESCE(p_previous_balance,0),
+-    tabulator=COALESCE(p_tabulator,0), net_amount=p_payment_amount-COALESCE(p_tabulator,0),
+-    new_balance=GREATEST(0,COALESCE(p_previous_balance,0)-p_payment_amount), concept=COALESCE(p_concept,'Abono'),
+-    notes=COALESCE(p_notes,''), receipt_snapshot=COALESCE(p_snapshot,'{}'::jsonb)
+-  WHERE id=p_receipt_id AND created_by=auth.uid()
+-  RETURNING * INTO r;
+-  RETURN r;
+-END;
+-$$;
+-REVOKE ALL ON FUNCTION public.update_collection_receipt(uuid,uuid,uuid,uuid,text,text,numeric,numeric,numeric,numeric,text,text,jsonb) FROM PUBLIC,anon;
+-GRANT EXECUTE ON FUNCTION public.update_collection_receipt(uuid,uuid,uuid,uuid,text,text,numeric,numeric,numeric,numeric,text,text,jsonb) TO authenticated;
+ 
+ -- Fase 12: proteger recibos programados y evitar nombres/gestores inconsistentes.
+ CREATE OR REPLACE FUNCTION public.create_scheduled_collection_receipt(
+@@ -921,8 +603,8 @@
+   p_scheduled_for date
+ ) RETURNS public.collection_receipts
+ LANGUAGE plpgsql
+-SECURITY DEFINER
+-SET search_path = pg_catalog, public
++SECURITY INVOKER
++SET search_path = public, pg_temp
+ AS $$
+ DECLARE
+   r public.collection_receipts;
+--- a/DENTAL_JG_COBRANZA_SUPABASE_SQL.sql
++++ b/DENTAL_JG_COBRANZA_SUPABASE_SQL.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG Cobranza: migración aditiva. No borra ni modifica pacientes ni pagos existentes.
+ create table if not exists public.collection_receipt_settings (
+   user_id uuid primary key references auth.users(id) on delete cascade,
+--- a/DENTAL_JG_FASE10_SEGURIDAD_RLS.sql
++++ b/DENTAL_JG_FASE10_SEGURIDAD_RLS.sql
+@@ -1,10 +1,3 @@
+--- AVISO DE COMPATIBILIDAD DENTAL JG 1.0.6
+--- ARCHIVO HISTÓRICO/SUPERSEDIDO: NO EJECUTAR DESPUÉS DE LA MIGRACIÓN INTEGRADA.
+--- Para esta versión, usar únicamente el archivo raíz:
+---   DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql
+--- Este script antiguo conserva políticas/privilegios de versiones anteriores y puede
+--- reabrir permisos que la migración integrada ahora restringe por rol.
+-
+ BEGIN;
+ 
+ -- DENTAL JG - Fase 10: acceso por roles y sincronización Gestor por RPC.
+--- a/DENTAL_JG_FASE6_IDEMPOTENCIA_PAGOS.sql
++++ b/DENTAL_JG_FASE6_IDEMPOTENCIA_PAGOS.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG - Fase 6: idempotencia de pagos y saldo consistente.
+ -- Requiere desplegar las APK revisadas para que Gestor envíe client_operation_id.
+ -- No borra pagos ni recalcula saldos históricos al instalarse.
+--- a/DENTAL_JG_FASE7_TRATAMIENTO_REGISTRO.sql
++++ b/DENTAL_JG_FASE7_TRATAMIENTO_REGISTRO.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG - Fase 7: guardar Tratamiento y Observaciones en sus campos correctos.
+ -- Migración aditiva: no modifica pacientes existentes, pagos ni saldos.
+ -- Ejecutar en Supabase después de respaldar y antes de usar la APK/web de Registro corregida.
+--- a/DENTAL_JG_FASE8_CARTERAS_POR_GESTOR.sql
++++ b/DENTAL_JG_FASE8_CARTERAS_POR_GESTOR.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG - Fase 8: una cartera por clínica y gestor asignado.
+ -- No elimina pacientes, pagos, recibos ni reportes históricos.
+ -- Respaldar Supabase antes de ejecutar.
+--- a/SUPABASE_REGISTRO_MINIMO_Y_ASIGNAR_ROL.sql
++++ b/SUPABASE_REGISTRO_MINIMO_Y_ASIGNAR_ROL.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8 — SQL mínimo para habilitar Registro de clientes.
+ -- Este archivo NO crea ni elimina tablas de Cobranza y NO cambia políticas de patients.
+ -- Ejecutar una sola vez desde Supabase SQL Editor si aún no se ha aplicado.
+--- a/cobranza-app/src/main/assets/DENTAL_JG_10_8_10_REGISTRO_FOLIO.sql
++++ b/cobranza-app/src/main/assets/DENTAL_JG_10_8_10_REGISTRO_FOLIO.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.10: campos de Registro y folio de sistema.
+ create sequence if not exists public.dental_jg_patient_folio_seq;
+ alter table public.patients add column if not exists folio text;
+--- a/cobranza-app/src/main/assets/DENTAL_JG_10_8_11_CORRECCIONES.sql
++++ b/cobranza-app/src/main/assets/DENTAL_JG_10_8_11_CORRECCIONES.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.11 — correcciones solicitadas
+ -- Ejecutar una sola vez (o volver a ejecutar sin borrar los datos existentes).
+ -- IMPORTANTE: la eliminación definitiva borra cliente, pagos, recibos y asignaciones; no archiva.
+--- a/cobranza-app/src/main/assets/DENTAL_JG_10_8_14_FORMULARIO_PAGOS_TITULAR.sql
++++ b/cobranza-app/src/main/assets/DENTAL_JG_10_8_14_FORMULARIO_PAGOS_TITULAR.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.14: datos de titular y condiciones de pago sincronizadas con Cobranza.
+ -- Ejecutar en Supabase SQL Editor antes de usar los nuevos campos.
+ alter table public.patients add column if not exists holder_name text not null default '';
+--- a/cobranza-app/src/main/assets/DENTAL_JG_10_8_21_MIGRACION_GESTORES_POLIZAS.sql
++++ b/cobranza-app/src/main/assets/DENTAL_JG_10_8_21_MIGRACION_GESTORES_POLIZAS.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.21: número de póliza, gestor asignado y clave de gestor.
+ -- Ejecutar en Supabase SQL Editor. Hacer respaldo antes de aplicar.
+ alter table public.patients add column if not exists policy_type text;
+--- a/cobranza-app/src/main/assets/DENTAL_JG_10_8_38_RECIBOS_PROGRAMADOS.sql
++++ b/cobranza-app/src/main/assets/DENTAL_JG_10_8_38_RECIBOS_PROGRAMADOS.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.38: generación de recibos programados antes del cobro.
+ -- Ejecutar una sola vez en Supabase SQL Editor. No borra pacientes, pagos ni recibos existentes.
+ alter table public.collection_receipts add column if not exists manager_id uuid references public.collection_managers(id) on delete set null;
+--- a/cobranza-app/src/main/assets/DENTAL_JG_FASE10_SEGURIDAD_RLS.sql
++++ b/cobranza-app/src/main/assets/DENTAL_JG_FASE10_SEGURIDAD_RLS.sql
+@@ -1,10 +1,3 @@
+--- AVISO DE COMPATIBILIDAD DENTAL JG 1.0.6
+--- ARCHIVO HISTÓRICO/SUPERSEDIDO: NO EJECUTAR DESPUÉS DE LA MIGRACIÓN INTEGRADA.
+--- Para esta versión, usar únicamente el archivo raíz:
+---   DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql
+--- Este script antiguo conserva políticas/privilegios de versiones anteriores y puede
+--- reabrir permisos que la migración integrada ahora restringe por rol.
+-
+ BEGIN;
+ 
+ -- DENTAL JG - Fase 10: acceso por roles y sincronización Gestor por RPC.
+--- a/cobranza-app/src/main/assets/DENTAL_JG_FASE6_IDEMPOTENCIA_PAGOS.sql
++++ b/cobranza-app/src/main/assets/DENTAL_JG_FASE6_IDEMPOTENCIA_PAGOS.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG - Fase 6: idempotencia de pagos y saldo consistente.
+ -- Requiere desplegar las APK revisadas para que Gestor envíe client_operation_id.
+ -- No borra pagos ni recalcula saldos históricos al instalarse.
+--- a/cobranza-app/src/main/assets/DENTAL_JG_FASE8_CARTERAS_POR_GESTOR.sql
++++ b/cobranza-app/src/main/assets/DENTAL_JG_FASE8_CARTERAS_POR_GESTOR.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG - Fase 8: una cartera por clínica y gestor asignado.
+ -- No elimina pacientes, pagos, recibos ni reportes históricos.
+ -- Respaldar Supabase antes de ejecutar.
+--- a/cobranza-app/src/main/assets/app.js
++++ b/cobranza-app/src/main/assets/app.js
+@@ -20,20 +20,20 @@
+ async function loadPortfolioData(){try{const [m,p,a]=await Promise.all([db.from('collection_managers').select('id,created_by,full_name,phone,active,created_at,updated_at').order('full_name'),db.from('collection_portfolios').select('*').order('clinic_name'),db.from('collection_portfolio_patients').select('portfolio_id,patient_id')]);if(m.error)throw m.error;if(p.error)throw p.error;if(a.error)throw a.error;managers=m.data||[];portfolios=p.data||[];portfolioPatients=a.data||[];renderPortfolios();fillManagerSelectors();const rps=$('receiptPortfolioManager');if(rps){const keep=rps.value;rps.innerHTML='<option value="">Selecciona un gestor</option>'+managers.filter(m=>m.active!==false).map(m=>`<option value="${esc(m.id)}">${esc(m.full_name)}</option>`).join('');rps.value=managers.some(m=>String(m.id)===String(keep))?keep:(managers[0]?.id||'')}updatePortfolioSummary();await loadSavedReports();$('portfolioMsg').textContent='Carteras y gestores sincronizados.';return true}catch(e){console.error(e);$('portfolioMsg').textContent='Falta instalar la migración SQL actualizada de Cobranza. Detalle: '+(e.message||'error');renderHistoricalPortfolioRows();return false}}
+ async function createManager(e){e.preventDefault();const name=$('managerName').value.trim();if(!name)return;const btn=$('managerForm').querySelector('button[type="submit"]');btn.disabled=true;$('managerMsg').textContent='Guardando gestor…';try{const {data,error}=await db.from('collection_managers').insert({full_name:name,phone:$('managerPhone').value.trim(),created_by:user.id}).select('id,created_by,full_name,phone,active,created_at,updated_at').single();if(error)throw error;managers.push(data);managers.sort((a,b)=>a.full_name.localeCompare(b.full_name,'es'));$('managerForm').reset();renderPortfolios();$('managerMsg').textContent='Gestor registrado.';toast('Gestor registrado correctamente.')}catch(e){console.error(e);$('managerMsg').textContent=(e.code==='23505'?'Ese gestor ya está registrado.':'No se pudo registrar: '+(e.message||'revisa la migración SQL'))}finally{btn.disabled=false}}
+ async function generatePortfolios(){if(!patients.length){$('portfolioMsg').textContent='No hay pacientes registrados para generar carteras.';alert('Primero registra pacientes desde Registro de Clientes.');return}const btn=$('generatePortfolios');if(!btn){toast('No se encontró el botón para generar carteras.');return}btn.disabled=true;btn.textContent='Generando carteras…';$('portfolioMsg').textContent='Agrupando pacientes por clínica y gestor asignado…';try{const groups=new Map();let unassigned=0,createdGroups=0;for(const pt of patients){const managerId=String(pt.assigned_manager_id||'');if(!managerId){unassigned++;continue}const clinic=(pt.clinic||'').trim()||'Sin clínica';const key=managerId+'::'+clinic;if(!groups.has(key))groups.set(key,{managerId,clinic,patients:[]});groups.get(key).patients.push(pt)}if(!groups.size){$('portfolioMsg').textContent='No se generaron carteras porque ningún paciente tiene assigned_manager_id. Revisa las asignaciones en Registro de Clientes.';return}for(const group of groups.values()){const manager=managers.find(m=>String(m.id)===group.managerId);if(!manager||manager.active===false){unassigned+=group.patients.length;continue}const payload={created_by:user.id,clinic_name:group.clinic,name:`Cartera - ${group.clinic} - ${manager.full_name}`,manager_id:group.managerId,updated_at:new Date().toISOString()};const {data:portfolio,error}=await db.from('collection_portfolios').upsert(payload,{onConflict:'created_by,clinic_name,manager_id'}).select().single();if(error)throw error;createdGroups++;const assignments=group.patients.map(pt=>({created_by:user.id,portfolio_id:portfolio.id,patient_id:pt.id}));if(assignments.length){const {error:ae}=await db.from('collection_portfolio_patients').upsert(assignments,{onConflict:'portfolio_id,patient_id',ignoreDuplicates:true});if(ae)throw ae}}await loadPortfolioData();$('portfolioMsg').textContent=`Carteras creadas/actualizadas: ${createdGroups} grupo(s) por clínica y gestor. ${unassigned?unassigned+' paciente(s) omitidos por falta de gestor activo/asignado. ':''}No se asignaron pacientes a gestores distintos de los registrados en cada expediente.`;toast('Carteras actualizadas por gestor y clínica.')}catch(e){console.error(e);$('portfolioMsg').textContent='No se pudieron generar las carteras. Ejecuta la migración de carteras por gestor incluida en esta versión y revisa permisos. Detalle: '+(e.message||'error')}finally{btn.disabled=false;btn.textContent='Generar / actualizar carteras'}}
+-function renderArchive(){const q=($('archiveSearch')?.value||'').trim().toLocaleLowerCase('es-MX');const rows=archivedPatients.filter(a=>[a.patient_name,a.clinic,a.original_patient_id,a.archive_reason].join(' ').toLocaleLowerCase('es-MX').includes(q));$('archiveRows').innerHTML=rows.length?rows.map(a=>`<tr><td><b>${esc(a.patient_name||'Sin nombre')}</b><div class="archive-detail">${esc(a.original_patient_id)}</div></td><td>${esc(a.clinic||'—')}</td><td>${date(a.liquidated_at)}</td><td>${date(a.archived_at)}</td><td>${esc(a.archive_reason==='MANUAL'?'Manual':'Automático · 3 años')}</td><td><span class="archive-status">${a.restored_at?'Restaurado':'Archivado'}</span></td><td class="archive-actions">${a.restored_at?'<span>Ya restaurado</span>':`<button class="restore-btn" data-restore-archive="${a.id}">Restaurar</button>`}<button class="rowbtn ghost" data-view-archive="${a.id}">Ver expediente</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">No hay expedientes que coincidan con la búsqueda.</td></tr>';document.querySelectorAll('[data-restore-archive]').forEach(b=>b.onclick=()=>restoreArchivedPatient(b.dataset.restoreArchive));document.querySelectorAll('[data-view-archive]').forEach(b=>b.onclick=()=>viewArchivedPatient(b.dataset.viewArchive));const aq=($('activeArchiveSearch')?.value||'').trim().toLocaleLowerCase('es-MX');const active=patients.filter(p=>[p.name,p.phone,p.clinic,p.policy_number].join(' ').toLocaleLowerCase('es-MX').includes(aq));$('activeArchiveRows').innerHTML=active.length?active.map(p=>{const total=Number(p.total)||0,paid=Number(p.paid)||0;return `<tr><td><b>${esc(p.name||'Sin nombre')}</b><div class="archive-detail">Folio: ${esc(p.folio||'—')} · Titular: ${esc(p.holder_name||p.name||'—')} · ${esc(p.phone||'Sin teléfono')}</div></td><td>${esc(p.clinic||'—')}<div class="archive-detail">${esc(p.payment_mode||'quincenal')} · Pago: ${money(p.installment_amount||0)} · Primer pago: ${date(p.first_payment_date)}</div></td><td>${money(total)}</td><td>${money(paid)}</td><td>${money(Math.max(0,total-paid))}</td><td>${canManageClients?`<button class="rowbtn ghost" data-edit-active-patient="${p.id}">Editar</button>`:''} ${isAdmin?`<button class="danger-btn" data-delete-active-patient="${p.id}">Eliminar cliente y pagos</button>`:''}</td></tr>`}).join(''):'<tr><td colspan="6" class="empty">No hay clientes activos que coincidan.</td></tr>';document.querySelectorAll('[data-edit-active-patient]').forEach(b=>b.onclick=()=>editActivePatient(b.dataset.editActivePatient));document.querySelectorAll('[data-delete-active-patient]').forEach(b=>b.onclick=()=>deleteActivePatient(b.dataset.deleteActivePatient))}
+-function renderActivePatients(){if(!$('activeArchiveRows'))return;const q=($('activeArchiveSearch')?.value||'').trim().toLocaleLowerCase('es-MX');const active=patients.filter(p=>[p.name,p.phone,p.clinic,p.policy_number].join(' ').toLocaleLowerCase('es-MX').includes(q));$('activeArchiveRows').innerHTML=active.length?active.map(p=>{const total=Number(p.total)||0,paid=Number(p.paid)||0;return `<tr><td><b>${esc(p.name||'Sin nombre')}</b><div class="archive-detail">Folio: ${esc(p.folio||'—')} · Titular: ${esc(p.holder_name||p.name||'—')} · ${esc(p.phone||'Sin teléfono')}</div></td><td>${esc(p.clinic||'—')}<div class="archive-detail">${esc(p.payment_mode||'quincenal')} · Pago: ${money(p.installment_amount||0)} · Primer pago: ${date(p.first_payment_date)}</div></td><td>${money(total)}</td><td>${money(paid)}</td><td>${money(Math.max(0,total-paid))}</td><td>${canManageClients?`<button class="rowbtn ghost" data-edit-active-patient="${p.id}">Editar</button>`:''} ${isAdmin?`<button class="danger-btn" data-delete-active-patient="${p.id}">Eliminar cliente y pagos</button>`:''}</td></tr>`}).join(''):'<tr><td colspan="6" class="empty">No hay clientes activos que coincidan.</td></tr>';document.querySelectorAll('[data-edit-active-patient]').forEach(b=>b.onclick=()=>editActivePatient(b.dataset.editActivePatient));document.querySelectorAll('[data-delete-active-patient]').forEach(b=>b.onclick=()=>deleteActivePatient(b.dataset.deleteActivePatient))}
++function renderArchive(){const q=($('archiveSearch')?.value||'').trim().toLocaleLowerCase('es-MX');const rows=archivedPatients.filter(a=>[a.patient_name,a.clinic,a.original_patient_id,a.archive_reason].join(' ').toLocaleLowerCase('es-MX').includes(q));$('archiveRows').innerHTML=rows.length?rows.map(a=>`<tr><td><b>${esc(a.patient_name||'Sin nombre')}</b><div class="archive-detail">${esc(a.original_patient_id)}</div></td><td>${esc(a.clinic||'—')}</td><td>${date(a.liquidated_at)}</td><td>${date(a.archived_at)}</td><td>${esc(a.archive_reason==='MANUAL'?'Manual':'Automático · 3 años')}</td><td><span class="archive-status">${a.restored_at?'Restaurado':'Archivado'}</span></td><td class="archive-actions">${a.restored_at?'<span>Ya restaurado</span>':`<button class="restore-btn" data-restore-archive="${a.id}">Restaurar</button>`}<button class="rowbtn ghost" data-view-archive="${a.id}">Ver expediente</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">No hay expedientes que coincidan con la búsqueda.</td></tr>';document.querySelectorAll('[data-restore-archive]').forEach(b=>b.onclick=()=>restoreArchivedPatient(b.dataset.restoreArchive));document.querySelectorAll('[data-view-archive]').forEach(b=>b.onclick=()=>viewArchivedPatient(b.dataset.viewArchive));const aq=($('activeArchiveSearch')?.value||'').trim().toLocaleLowerCase('es-MX');const active=patients.filter(p=>[p.name,p.phone,p.clinic,p.policy_number].join(' ').toLocaleLowerCase('es-MX').includes(aq));$('activeArchiveRows').innerHTML=active.length?active.map(p=>{const total=Number(p.total)||0,paid=Number(p.paid)||0;return `<tr><td><b>${esc(p.name||'Sin nombre')}</b><div class="archive-detail">Folio: ${esc(p.folio||'—')} · Titular: ${esc(p.holder_name||p.name||'—')} · ${esc(p.phone||'Sin teléfono')}</div></td><td>${esc(p.clinic||'—')}<div class="archive-detail">${esc(p.payment_mode||'quincenal')} · Pago: ${money(p.installment_amount||0)} · Primer pago: ${date(p.first_payment_date)}</div></td><td>${money(total)}</td><td>${money(paid)}</td><td>${money(Math.max(0,total-paid))}</td><td><button class="rowbtn ghost" data-edit-active-patient="${p.id}">Editar</button> <button class="danger-btn" data-delete-active-patient="${p.id}">Eliminar cliente y pagos</button></td></tr>`}).join(''):'<tr><td colspan="6" class="empty">No hay clientes activos que coincidan.</td></tr>';document.querySelectorAll('[data-edit-active-patient]').forEach(b=>b.onclick=()=>editActivePatient(b.dataset.editActivePatient));document.querySelectorAll('[data-delete-active-patient]').forEach(b=>b.onclick=()=>deleteActivePatient(b.dataset.deleteActivePatient))}
++function renderActivePatients(){if(!$('activeArchiveRows'))return;const q=($('activeArchiveSearch')?.value||'').trim().toLocaleLowerCase('es-MX');const active=patients.filter(p=>[p.name,p.phone,p.clinic,p.policy_number].join(' ').toLocaleLowerCase('es-MX').includes(q));$('activeArchiveRows').innerHTML=active.length?active.map(p=>{const total=Number(p.total)||0,paid=Number(p.paid)||0;return `<tr><td><b>${esc(p.name||'Sin nombre')}</b><div class="archive-detail">Folio: ${esc(p.folio||'—')} · Titular: ${esc(p.holder_name||p.name||'—')} · ${esc(p.phone||'Sin teléfono')}</div></td><td>${esc(p.clinic||'—')}<div class="archive-detail">${esc(p.payment_mode||'quincenal')} · Pago: ${money(p.installment_amount||0)} · Primer pago: ${date(p.first_payment_date)}</div></td><td>${money(total)}</td><td>${money(paid)}</td><td>${money(Math.max(0,total-paid))}</td><td><button class="rowbtn ghost" data-edit-active-patient="${p.id}">Editar</button> <button class="danger-btn" data-delete-active-patient="${p.id}">Eliminar cliente y pagos</button></td></tr>`}).join(''):'<tr><td colspan="6" class="empty">No hay clientes activos que coincidan.</td></tr>';document.querySelectorAll('[data-edit-active-patient]').forEach(b=>b.onclick=()=>editActivePatient(b.dataset.editActivePatient));document.querySelectorAll('[data-delete-active-patient]').forEach(b=>b.onclick=()=>deleteActivePatient(b.dataset.deleteActivePatient))}
+ async function loadArchive(){if(!$('archiveRows'))return;renderActivePatients();if(!isAdmin){$('archiveAccessMsg').textContent='El archivo histórico requiere rol admin. Los clientes activos sí pueden editarse o eliminarse desde esta pantalla.';$('archiveRows').innerHTML='<tr><td colspan="7" class="empty">Archivo histórico disponible solo para administración.</td></tr>';return}$('archiveAccessMsg').textContent='Cargando archivo histórico…';try{const {data,error}=await db.from('patient_account_archive').select('*').order('archived_at',{ascending:false});if(error)throw error;archivedPatients=data||[];$('archiveAccessMsg').textContent=`Archivo actualizado: ${archivedPatients.length} expediente(s) histórico(s).`;renderArchive()}catch(e){console.error(e);$('archiveAccessMsg').textContent='No se pudo leer el archivo. Ejecuta el SQL de liquidación y archivo actualizado en Supabase. Detalle: '+(e.message||'error');$('archiveRows').innerHTML='<tr><td colspan="7" class="empty">No se pudo cargar el archivo.</td></tr>'}}
+ async function archiveActivePatient(id){if(!isAdmin){toast('Solo un administrador puede archivar clientes.');return}const p=patientFor(id);if(!p)return;const balance=Math.max(0,Number(p.total||0)-Number(p.paid||0));const ok=confirm(`¿Archivar y retirar a ${p.name||'este cliente'} de los registros activos?\n\nSe guardarán el expediente, pagos, recibos y asignaciones en el archivo histórico.\nSaldo actual: ${money(balance)}.\n\nPodrás restaurarlo después desde Archivo de clientes.`);if(!ok)return;try{const {data,error}=await db.rpc('archive_patient_account',{p_patient_id:id});if(error)throw error;toast('Cliente archivado y retirado de los registros activos.');await load(true);await loadPortfolioData();await loadArchive()}catch(e){console.error(e);alert('No se pudo archivar el cliente. No se hicieron cambios si la operación falló. Detalle: '+(e.message||'revisa permisos y SQL'))}}
+-async function editActivePatient(id){if(!canManageClients){toast('Tu cuenta no tiene permiso para editar clientes.');return}const p=patientFor(id);if(!p)return;const name=(prompt('Nombre(s) y apellidos del paciente:',p.name||'')||'').trim();if(!name)return;const holder=(prompt('Nombre(s) del titular:',p.holder_name||p.name||'')||'').trim();if(!holder)return;const phone=(prompt('Teléfono:',p.phone||'')||'').trim();const address=(prompt('Dirección:',p.address||'')||'').trim();const clinic=(prompt('Clínica:',p.clinic||'')||'').trim();const policy=(prompt('Póliza:',p.policy_number||'')||'').trim();const modeRaw=(prompt('Modo de pago (quincenal o mensual):',p.payment_mode||'quincenal')||'').trim().toLowerCase();if(!['quincenal','mensual'].includes(modeRaw)){alert('El modo de pago debe ser quincenal o mensual.');return}const tabRaw=prompt('Tabulador ($):',String(p.tabulator??0));if(tabRaw===null)return;const tabulator=Number(tabRaw);const amountRaw=prompt(modeRaw==='mensual'?'Cantidad mensual ($):':'Cantidad quincenal ($):',String(p.installment_amount??0));if(amountRaw===null)return;const installment_amount=Number(amountRaw);const countRaw=prompt(modeRaw==='mensual'?'Número de mensualidades:':'Número de quincenas:',String(p.installments??0));if(countRaw===null)return;const installments=parseInt(countRaw,10);const totalRaw=prompt('Monto total de la póliza ($):',String(p.total??0));if(totalRaw===null)return;const total=Number(totalRaw);const firstDate=prompt('Fecha del primer pago (AAAA-MM-DD):',p.first_payment_date||'');if(firstDate===null)return;if(!holder||!Number.isFinite(tabulator)||tabulator<0||!Number.isFinite(installment_amount)||installment_amount<=0||!Number.isInteger(installments)||installments<1||!Number.isFinite(total)||total<=0||!/^\d{4}-\d{2}-\d{2}$/.test(firstDate)){alert('Revisa los importes, el número de pagos y la fecha del primer pago.');return}try{const {error}=await db.from('patients').update({name,holder_name:holder,first_names:name.split(' ')[0]||'',surnames:name.split(' ').slice(1).join(' '),phone,address,clinic,policy_number:policy,payment_mode:modeRaw,tabulator,installment_amount,installments,total,first_payment_date:firstDate,updated_at:new Date().toISOString()}).eq('id',id);if(error)throw error;toast('Datos del cliente y condiciones de pago actualizados.');await load(true);await loadArchive()}catch(e){console.error(e);alert('No se pudo editar el cliente: '+(e.message||'revisa que se haya ejecutado la migración SQL y los permisos.'))}}async function deleteActivePatient(id){if(!isAdmin){toast('Solo Administración puede eliminar definitivamente clientes.');return}const p=patientFor(id);if(!p)return;const count=payments.filter(x=>String(x.patient_id||'')===String(id)).length;if(!confirm(`¿Eliminar definitivamente a ${p.name||'este cliente'} y sus ${count} pago(s)?\n\nSe eliminarán también sus recibos relacionados y asignaciones de cartera. Esta acción no se puede deshacer.`))return;try{const {error}=await db.rpc('delete_patient_permanently',{p_patient_id:id});if(error)throw error;toast('Cliente y pagos eliminados.');await load(true);await loadPortfolioData();await loadArchive()}catch(e){console.error(e);alert('No se pudo eliminar: '+(e.message||'ejecuta la migración DENTAL_JG_10_8_11_CORRECCIONES.sql y revisa permisos.'))}}
++async function editActivePatient(id){if(!canManageClients){toast('Tu cuenta no tiene permiso para editar clientes.');return}const p=patientFor(id);if(!p)return;const name=(prompt('Nombre(s) y apellidos del paciente:',p.name||'')||'').trim();if(!name)return;const holder=(prompt('Nombre(s) del titular:',p.holder_name||p.name||'')||'').trim();if(!holder)return;const phone=(prompt('Teléfono:',p.phone||'')||'').trim();const address=(prompt('Dirección:',p.address||'')||'').trim();const clinic=(prompt('Clínica:',p.clinic||'')||'').trim();const policy=(prompt('Póliza:',p.policy_number||'')||'').trim();const modeRaw=(prompt('Modo de pago (quincenal o mensual):',p.payment_mode||'quincenal')||'').trim().toLowerCase();if(!['quincenal','mensual'].includes(modeRaw)){alert('El modo de pago debe ser quincenal o mensual.');return}const tabRaw=prompt('Tabulador ($):',String(p.tabulator??0));if(tabRaw===null)return;const tabulator=Number(tabRaw);const amountRaw=prompt(modeRaw==='mensual'?'Cantidad mensual ($):':'Cantidad quincenal ($):',String(p.installment_amount??0));if(amountRaw===null)return;const installment_amount=Number(amountRaw);const countRaw=prompt(modeRaw==='mensual'?'Número de mensualidades:':'Número de quincenas:',String(p.installments??0));if(countRaw===null)return;const installments=parseInt(countRaw,10);const totalRaw=prompt('Monto total de la póliza ($):',String(p.total??0));if(totalRaw===null)return;const total=Number(totalRaw);const firstDate=prompt('Fecha del primer pago (AAAA-MM-DD):',p.first_payment_date||'');if(firstDate===null)return;if(!holder||!Number.isFinite(tabulator)||tabulator<0||!Number.isFinite(installment_amount)||installment_amount<=0||!Number.isInteger(installments)||installments<1||!Number.isFinite(total)||total<=0||!/^\d{4}-\d{2}-\d{2}$/.test(firstDate)){alert('Revisa los importes, el número de pagos y la fecha del primer pago.');return}try{const {error}=await db.from('patients').update({name,holder_name:holder,first_names:name.split(' ')[0]||'',surnames:name.split(' ').slice(1).join(' '),phone,address,clinic,policy_number:policy,payment_mode:modeRaw,tabulator,installment_amount,installments,total,first_payment_date:firstDate,updated_at:new Date().toISOString()}).eq('id',id);if(error)throw error;toast('Datos del cliente y condiciones de pago actualizados.');await load(true);await loadArchive()}catch(e){console.error(e);alert('No se pudo editar el cliente: '+(e.message||'revisa que se haya ejecutado la migración SQL y los permisos.'))}}async function deleteActivePatient(id){if(!canManageClients){toast('Tu cuenta no tiene permiso para eliminar clientes.');return}const p=patientFor(id);if(!p)return;const count=payments.filter(x=>String(x.patient_id||'')===String(id)).length;if(!confirm(`¿Eliminar definitivamente a ${p.name||'este cliente'} y sus ${count} pago(s)?\n\nSe eliminarán también sus recibos relacionados y asignaciones de cartera. Esta acción no se puede deshacer.`))return;try{const {error}=await db.rpc('delete_patient_permanently',{p_patient_id:id});if(error)throw error;toast('Cliente y pagos eliminados.');await load(true);await loadPortfolioData();await loadArchive()}catch(e){console.error(e);alert('No se pudo eliminar: '+(e.message||'ejecuta la migración DENTAL_JG_10_8_11_CORRECCIONES.sql y revisa permisos.'))}}
+ async function restoreArchivedPatient(id){if(!isAdmin)return;const a=archivedPatients.find(x=>String(x.id)===String(id));if(!a)return;const ok=confirm(`¿Restaurar a ${a.patient_name||'este cliente'}?\n\nSe restaurarán sus datos, pagos, recibos y asignaciones que aún puedan recuperarse. Se volverá a mostrar en los registros activos.`);if(!ok)return;try{const {data,error}=await db.rpc('restore_patient_account',{p_archive_id:id});if(error)throw error;toast('Cliente restaurado correctamente.');await load(true);await loadPortfolioData();await loadArchive()}catch(e){console.error(e);alert('No se pudo restaurar el expediente. No se marcará como restaurado si la operación falló. Detalle: '+(e.message||'revisa permisos y SQL'))}}
+ function viewArchivedPatient(id){const a=archivedPatients.find(x=>String(x.id)===String(id));if(!a)return;const d=a.archive_data||{},p=d.patient||{};const payments=Array.isArray(d.payments)?d.payments:[],receipts=Array.isArray(d.receipts)?d.receipts:[];const paymentHtml=payments.length?payments.map(x=>`<tr><td>${date(x.paid_at||x.created_at)}</td><td>${esc(x.concept||'Abono')}</td><td>${money(x.amount)}</td><td>${esc(x.reference||'—')}</td></tr>`).join(''):'<tr><td colspan="4">Sin pagos archivados</td></tr>';const receiptHtml=receipts.length?receipts.map(x=>`<tr><td>${esc(x.folio||'—')}</td><td>${date(x.created_at)}</td><td>${money(x.payment_amount)}</td><td>${esc(x.concept||'—')}</td></tr>`).join(''):'<tr><td colspan="4">Sin recibos archivados</td></tr>';const w=window.open('','_blank','width=900,height=700');if(!w){alert('El navegador bloqueó la ventana. Permite ventanas emergentes para consultar el expediente.');return}w.document.write(`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Expediente archivado</title><style>body{font:15px Arial,sans-serif;padding:24px;color:#182230}h1,h2{color:#1769c2}table{width:100%;border-collapse:collapse;margin:12px 0 24px}th,td{text-align:left;padding:8px;border-bottom:1px solid #ddd}small{color:#667085}</style><h1>Expediente archivado · DENTAL JG</h1><h2>${esc(p.name||a.patient_name)}</h2><p><b>Clínica:</b> ${esc(p.clinic||a.clinic||'—')} &nbsp; <b>Teléfono:</b> ${esc(p.phone||'—')}</p><p><b>Total:</b> ${money(p.total)} &nbsp; <b>Pagado:</b> ${money(p.paid)} &nbsp; <b>Saldo:</b> ${money(Math.max(0,Number(p.total||0)-Number(p.paid||0)))}</p><p><b>Liquidación:</b> ${date(a.liquidated_at)} &nbsp; <b>Archivado:</b> ${date(a.archived_at)}</p><h2>Pagos (${payments.length})</h2><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Importe</th><th>Referencia</th></tr></thead><tbody>${paymentHtml}</tbody></table><h2>Recibos (${receipts.length})</h2><table><thead><tr><th>Folio</th><th>Fecha</th><th>Importe</th><th>Concepto</th></tr></thead><tbody>${receiptHtml}</tbody></table><button onclick="print()">Imprimir expediente</button></html>`);w.document.close()}
+ async function loadSettings(){let {data,error}=await db.from('collection_receipt_settings').select('*').eq('user_id',user.id).maybeSingle();if(error)throw error;if(!data){let ins=await db.from('collection_receipt_settings').insert({user_id:user.id}).select().single();if(ins.error)throw ins.error;data=ins.data}settings=data;$('receiptTitle').value=data.receipt_title||'RECIBO DE COBRANZA';$('folioPrefix').value=data.folio_prefix||'JG-';$('nextFolio').value=data.next_folio||1;$('folioDigits').value=String(data.folio_digits||6);$('tabulatorDefault').value=data.tabulator_default||0;$('receiptFooter').value=data.receipt_footer||'Gracias por su pago.'}async function loadClinics(){if(!$('clinicRows'))return;try{const {data,error}=await db.from('clinics').select('*').order('name',{ascending:true});if(error)throw error;clinics=data||[];clinicTableAvailable=true;renderClinics()}catch(e){console.error('No se pudo cargar el catálogo de clínicas',e);clinicTableAvailable=false;$('clinicRows').innerHTML='<tr><td colspan="4" class="empty">No se pudo consultar public.clinics. Revisa la conexión y los permisos de Supabase.</td></tr>';$('clinicMsg').textContent='No se pudo cargar el catálogo compartido.'}}
+-function renderClinics(){if(!$('clinicRows'))return;const names=[...new Set(clinics.map(c=>String(c.name||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es-MX'));const legacyNames=[...new Set(patients.map(p=>String(p.clinic||'').trim()).filter(Boolean))].filter(n=>!names.some(x=>x.toLocaleLowerCase('es-MX')===n.toLocaleLowerCase('es-MX')));$('clinicRows').innerHTML=names.length?names.map(name=>{const c=clinics.find(x=>String(x.name||'').trim().toLocaleLowerCase('es-MX')===name.toLocaleLowerCase('es-MX'));const count=patients.filter(p=>String(p.clinic||'').trim().toLocaleLowerCase('es-MX')===name.toLocaleLowerCase('es-MX')).length;const actions=isAdmin?(c?`<button class="rowbtn ghost" data-edit-clinic="${esc(c.id)}">Editar</button> <button class="danger-btn" data-delete-clinic="${esc(c.id)}">Eliminar</button>`:`<button class="rowbtn ghost" data-register-clinic="${esc(name)}">Agregar al catálogo</button>`):'<span>Solo Administración</span>';return `<tr><td><b>${esc(name)}</b></td><td>${count}</td><td>${c?'Catálogo compartido':'Nombre antiguo de paciente'}</td><td>${actions}</td></tr>`}).join(''):'<tr><td colspan="4" class="empty">No hay clínicas registradas.</td></tr>';if(legacyNames.length)$('clinicRows').innerHTML+=legacyNames.map(name=>`<tr><td>${esc(name)}</td><td>${patients.filter(p=>String(p.clinic||'').trim().toLocaleLowerCase('es-MX')===name.toLocaleLowerCase('es-MX')).length}</td><td>Asignación en expedientes</td><td><button class="danger-btn" data-clear-legacy-clinic="${esc(name)}">Quitar asignación</button></td></tr>`).join('');document.querySelectorAll('[data-clear-legacy-clinic]').forEach(b=>{b.hidden=!isAdmin;b.onclick=()=>clearLegacyClinic(b.dataset.clearLegacyClinic)});document.querySelectorAll('[data-edit-clinic]').forEach(b=>b.onclick=()=>editClinic(b.dataset.editClinic));document.querySelectorAll('[data-delete-clinic]').forEach(b=>b.onclick=()=>deleteClinic(b.dataset.deleteClinic));document.querySelectorAll('[data-register-clinic]').forEach(b=>b.onclick=()=>registerLegacyClinic(b.dataset.registerClinic));if($('clinicForm'))$('clinicForm').querySelector('button[type="submit"]').disabled=!canManageClients;if($('clinicMsg')&&!canManageClients)$('clinicMsg').textContent='Tu cuenta puede consultar clínicas, pero no tiene permiso para editarlas o eliminarlas.'}
+-async function clearLegacyClinic(name){if(!isAdmin){toast('Solo Administración puede cambiar las asignaciones de clínicas.');return}const count=patients.filter(p=>String(p.clinic||'').trim().toLocaleLowerCase('es-MX')===String(name||'').trim().toLocaleLowerCase('es-MX')).length;if(!count)return;if(!confirm('¿Quitar la clínica «'+name+'» de '+count+' expediente(s)? Los clientes, pagos y recibos se conservarán; solo se limpiará el campo clínica.'))return;try{const {error}=await db.from('patients').update({clinic:''}).eq('clinic',name);if(error)throw error;await load(true);await loadClinics();await loadPortfolioData();toast('Asignación de clínica eliminada; los expedientes se conservaron.')}catch(e){console.error(e);toast('No se pudo quitar la clínica: '+(e.message||'revisa permisos de Supabase'))}}
+-async function registerLegacyClinic(name){if(!isAdmin){toast('Solo Administración puede administrar clínicas.');return}const clean=String(name||'').trim();if(!clean)return;const {data,error}=await db.from('clinics').insert({name:clean,active:true}).select('*').single();if(error){console.error(error);toast('No se pudo agregar al catálogo: '+(error.message||'revisa permisos'));return}clinics.push(data);renderClinics();toast('Clínica agregada al catálogo compartido.')}
+-async function addClinic(e){e.preventDefault();if(!isAdmin){toast('Solo Administración puede administrar clínicas.');return}const name=$('clinicName').value.trim();if(!name)return;if([...clinics.map(c=>c.name),...patients.map(p=>p.clinic)].some(n=>String(n||'').trim().toLocaleLowerCase('es-MX')===name.toLocaleLowerCase('es-MX'))){toast('Esa clínica ya existe o ya está asignada a pacientes.');return}const btn=$('saveClinic');btn.disabled=true;try{const {data,error}=await db.from('clinics').insert({name,active:true}).select('*').single();if(error)throw error;clinics.push(data);$('clinicName').value='';$('clinicMsg').textContent='Clínica agregada al catálogo compartido.';renderClinics();toast('Clínica agregada.')}catch(e){console.error(e);toast('No se pudo guardar la clínica: '+(e.message||'revisa permisos en Supabase'))}finally{btn.disabled=false}}
+-async function editClinic(id){if(!isAdmin){toast('Solo Administración puede editar clínicas.');return}const c=clinics.find(x=>String(x.id)===String(id));if(!c)return;const next=(prompt('Escribe el nuevo nombre de la clínica:',c.name)||'').trim();if(!next||next===c.name)return;if([...clinics].some(x=>String(x.id)!==String(id)&&String(x.name||'').trim().toLocaleLowerCase('es-MX')===next.toLocaleLowerCase('es-MX'))){toast('Ya existe una clínica con ese nombre.');return}const old=c.name;try{const {error}=await db.from('clinics').update({name:next}).eq('id',id);if(error)throw error;const {error:patientError}=await db.from('patients').update({clinic:next}).eq('clinic',old);if(patientError){console.error(patientError);toast('Se cambió el catálogo, pero no se pudieron actualizar todos los pacientes. Revisa permisos de patients.')}else toast('Clínica y asignaciones actualizadas.');await load(true);await loadClinics();await loadPortfolioData()}catch(e){console.error(e);toast('No se pudo modificar la clínica: '+(e.message||'revisa permisos en Supabase'))}}
+-async function deleteClinic(id){if(!isAdmin){toast('Solo Administración puede eliminar clínicas.');return}const c=clinics.find(x=>String(x.id)===String(id));if(!c)return;const count=patients.filter(p=>String(p.clinic||'').trim().toLocaleLowerCase('es-MX')===String(c.name||'').trim().toLocaleLowerCase('es-MX')).length;const detail=count?`Hay ${count} paciente(s) asignado(s). Se conservarán sus expedientes y pagos, pero quedarán sin clínica.`:'No hay pacientes asignados.';if(!confirm(`¿Eliminar la clínica “${c.name}”?\n\n${detail}\nLos reportes históricos de carteras no se borrarán.`))return;try{if(count){const {error}=await db.from('patients').update({clinic:''}).eq('clinic',c.name);if(error)throw new Error('No se pudieron desasignar los pacientes: '+error.message)}const {error}=await db.from('clinics').delete().eq('id',id);if(error)throw error;await load(true);await loadClinics();await loadPortfolioData();toast('Clínica eliminada. Los expedientes, pagos y reportes históricos se conservaron.')}catch(e){console.error(e);toast('No se pudo eliminar la clínica: '+(e.message||'revisa permisos en Supabase'))}}
++function renderClinics(){if(!$('clinicRows'))return;const names=[...new Set(clinics.map(c=>String(c.name||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es-MX'));const legacyNames=[...new Set(patients.map(p=>String(p.clinic||'').trim()).filter(Boolean))].filter(n=>!names.some(x=>x.toLocaleLowerCase('es-MX')===n.toLocaleLowerCase('es-MX')));$('clinicRows').innerHTML=names.length?names.map(name=>{const c=clinics.find(x=>String(x.name||'').trim().toLocaleLowerCase('es-MX')===name.toLocaleLowerCase('es-MX'));const count=patients.filter(p=>String(p.clinic||'').trim().toLocaleLowerCase('es-MX')===name.toLocaleLowerCase('es-MX')).length;const actions=canManageClients?(c?`<button class="rowbtn ghost" data-edit-clinic="${esc(c.id)}">Editar</button> <button class="danger-btn" data-delete-clinic="${esc(c.id)}">Eliminar</button>`:`<button class="rowbtn ghost" data-register-clinic="${esc(name)}">Agregar al catálogo</button>`):'<span>Solo consulta</span>';return `<tr><td><b>${esc(name)}</b></td><td>${count}</td><td>${c?'Catálogo compartido':'Nombre antiguo de paciente'}</td><td>${actions}</td></tr>`}).join(''):'<tr><td colspan="4" class="empty">No hay clínicas registradas.</td></tr>';if(legacyNames.length)$('clinicRows').innerHTML+=legacyNames.map(name=>`<tr><td>${esc(name)}</td><td>${patients.filter(p=>String(p.clinic||'').trim().toLocaleLowerCase('es-MX')===name.toLocaleLowerCase('es-MX')).length}</td><td>Asignación en expedientes</td><td><button class="danger-btn" data-clear-legacy-clinic="${esc(name)}">Quitar asignación</button></td></tr>`).join('');document.querySelectorAll('[data-clear-legacy-clinic]').forEach(b=>b.onclick=()=>clearLegacyClinic(b.dataset.clearLegacyClinic));document.querySelectorAll('[data-edit-clinic]').forEach(b=>b.onclick=()=>editClinic(b.dataset.editClinic));document.querySelectorAll('[data-delete-clinic]').forEach(b=>b.onclick=()=>deleteClinic(b.dataset.deleteClinic));document.querySelectorAll('[data-register-clinic]').forEach(b=>b.onclick=()=>registerLegacyClinic(b.dataset.registerClinic));if($('clinicForm'))$('clinicForm').querySelector('button[type="submit"]').disabled=!canManageClients;if($('clinicMsg')&&!canManageClients)$('clinicMsg').textContent='Tu cuenta puede consultar clínicas, pero no tiene permiso para editarlas o eliminarlas.'}
++async function clearLegacyClinic(name){if(!canManageClients){toast('Tu cuenta no tiene permiso para modificar clientes.');return}const count=patients.filter(p=>String(p.clinic||'').trim().toLocaleLowerCase('es-MX')===String(name||'').trim().toLocaleLowerCase('es-MX')).length;if(!count)return;if(!confirm('¿Quitar la clínica «'+name+'» de '+count+' expediente(s)? Los clientes, pagos y recibos se conservarán; solo se limpiará el campo clínica.'))return;try{const {error}=await db.from('patients').update({clinic:''}).eq('clinic',name);if(error)throw error;await load(true);await loadClinics();await loadPortfolioData();toast('Asignación de clínica eliminada; los expedientes se conservaron.')}catch(e){console.error(e);toast('No se pudo quitar la clínica: '+(e.message||'revisa permisos de Supabase'))}}
++async function registerLegacyClinic(name){if(!canManageClients){toast('Tu cuenta no tiene permiso para administrar clínicas.');return}const clean=String(name||'').trim();if(!clean)return;const {data,error}=await db.from('clinics').insert({name:clean,active:true}).select('*').single();if(error){console.error(error);toast('No se pudo agregar al catálogo: '+(error.message||'revisa permisos'));return}clinics.push(data);renderClinics();toast('Clínica agregada al catálogo compartido.')}
++async function addClinic(e){e.preventDefault();if(!canManageClients){toast('Tu cuenta no tiene permiso para administrar clínicas.');return}const name=$('clinicName').value.trim();if(!name)return;if([...clinics.map(c=>c.name),...patients.map(p=>p.clinic)].some(n=>String(n||'').trim().toLocaleLowerCase('es-MX')===name.toLocaleLowerCase('es-MX'))){toast('Esa clínica ya existe o ya está asignada a pacientes.');return}const btn=$('saveClinic');btn.disabled=true;try{const {data,error}=await db.from('clinics').insert({name,active:true}).select('*').single();if(error)throw error;clinics.push(data);$('clinicName').value='';$('clinicMsg').textContent='Clínica agregada al catálogo compartido.';renderClinics();toast('Clínica agregada.')}catch(e){console.error(e);toast('No se pudo guardar la clínica: '+(e.message||'revisa permisos en Supabase'))}finally{btn.disabled=false}}
++async function editClinic(id){if(!canManageClients){toast('Tu cuenta no tiene permiso para editar clínicas.');return}const c=clinics.find(x=>String(x.id)===String(id));if(!c)return;const next=(prompt('Escribe el nuevo nombre de la clínica:',c.name)||'').trim();if(!next||next===c.name)return;if([...clinics].some(x=>String(x.id)!==String(id)&&String(x.name||'').trim().toLocaleLowerCase('es-MX')===next.toLocaleLowerCase('es-MX'))){toast('Ya existe una clínica con ese nombre.');return}const old=c.name;try{const {error}=await db.from('clinics').update({name:next}).eq('id',id);if(error)throw error;const {error:patientError}=await db.from('patients').update({clinic:next}).eq('clinic',old);if(patientError){console.error(patientError);toast('Se cambió el catálogo, pero no se pudieron actualizar todos los pacientes. Revisa permisos de patients.')}else toast('Clínica y asignaciones actualizadas.');await load(true);await loadClinics();await loadPortfolioData()}catch(e){console.error(e);toast('No se pudo modificar la clínica: '+(e.message||'revisa permisos en Supabase'))}}
++async function deleteClinic(id){if(!canManageClients){toast('Tu cuenta no tiene permiso para eliminar clínicas.');return}const c=clinics.find(x=>String(x.id)===String(id));if(!c)return;const count=patients.filter(p=>String(p.clinic||'').trim().toLocaleLowerCase('es-MX')===String(c.name||'').trim().toLocaleLowerCase('es-MX')).length;const detail=count?`Hay ${count} paciente(s) asignado(s). Se conservarán sus expedientes y pagos, pero quedarán sin clínica.`:'No hay pacientes asignados.';if(!confirm(`¿Eliminar la clínica “${c.name}”?\n\n${detail}\nLos reportes históricos de carteras no se borrarán.`))return;try{if(count){const {error}=await db.from('patients').update({clinic:''}).eq('clinic',c.name);if(error)throw new Error('No se pudieron desasignar los pacientes: '+error.message)}const {error}=await db.from('clinics').delete().eq('id',id);if(error)throw error;await load(true);await loadClinics();await loadPortfolioData();toast('Clínica eliminada. Los expedientes, pagos y reportes históricos se conservaron.')}catch(e){console.error(e);toast('No se pudo eliminar la clínica: '+(e.message||'revisa permisos en Supabase'))}}
+ async function load(silent=false){try{const [p,a]=await Promise.all([db.from('patients').select('*').order('name'),db.from('payments').select('*').order('paid_at',{ascending:false})]);if(p.error)throw p.error;if(a.error)throw a.error;patients=p.data||[];payments=a.data||[];try{const r=await db.from('collection_receipts').select('*').order('created_at',{ascending:false});if(r.error)throw r.error;receipts=r.data||[]}catch(re){console.error(re);receipts=[];if(!silent)toast('Pacientes y pagos conectados; para recibos instala el SQL de Cobranza.')}render();connection(true,'Conectado · datos actualizados');if(!silent)toast('Datos actualizados');}catch(e){console.error(e);connection(false,'Error al consultar datos');if(!silent)toast('No se pudieron leer pacientes y pagos: '+(e.message||'revisa la conexión y permisos'))}}
+ function realtime(){if(channel)db.removeChannel(channel);channel=db.channel('dental-jg-cobranza-live').on('postgres_changes',{event:'*',schema:'public',table:'patients'},()=>{load(true);loadPortfolioData()}).on('postgres_changes',{event:'*',schema:'public',table:'clinics'},()=>loadClinics()).on('postgres_changes',{event:'*',schema:'public',table:'payments'},()=>load(true)).on('postgres_changes',{event:'*',schema:'public',table:'collection_receipts'},()=>load(true)).on('postgres_changes',{event:'*',schema:'public',table:'collection_portfolios'},()=>loadPortfolioData()).on('postgres_changes',{event:'*',schema:'public',table:'collection_managers'},()=>loadPortfolioData()).on('postgres_changes',{event:'*',schema:'public',table:'collection_portfolio_patients'},()=>loadPortfolioData()).subscribe(s=>{if(s==='SUBSCRIBED')connection(true,'En línea · tiempo real');else if(s==='CHANNEL_ERROR'||s==='TIMED_OUT'||s==='CLOSED')connection(true,'Conectado · actualización automática')});if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(user){load(true);loadPortfolioData()}},20000)}
+ function openReceipt(payment=null){const designPicker=$('manualReceiptDesign');if(designPicker)designPicker.value=String(getReceiptDesign());editingReceipt=null;$('saveReceipt').textContent='Generar folio y guardar';selectedPayment=payment;$('dialogTitle').textContent='Generar recibo';$('receiptMsg').textContent='';$('paymentSelect').innerHTML='<option value="">Recibo manual / sin pago vinculado</option>'+[...payments].sort(sortPayments).map(p=>`<option value="${p.id}">${esc(nameFor(p))} · ${date(p.paid_at||p.created_at)} · ${money(p.amount)}</option>`).join('');$('paymentSelect').value=payment?.id||'';const quick=$('patientQuickSelect');if(quick){quick.innerHTML='<option value="">Selecciona un cliente por folio o nombre</option>'+[...patients].sort((a,b)=>String(a.folio||'').localeCompare(String(b.folio||''),'es')).map(x=>`<option value="${esc(x.id)}">${esc(x.folio||'SIN FOLIO')} · ${esc(fullPatientName(x)||'Paciente sin nombre')} · ${esc(x.clinic||'Sin clínica')}</option>`).join('');quick.value=payment?.patient_id||'';}let pt=payment?patientFor(payment.patient_id):null;$('rPatient').value=payment?nameFor(payment):'';$('rHolder').value=payment?(pt?.holder_name||''):'';$('rAddress').value=payment?(pt?.address||''):'';$('rContract').value=payment?(pt?.folio||''):'';$('rPhone').value=payment?(pt?.phone||''):'';$('rClinic').value=payment?clinicFor(payment):'';$('rPolicy').value=pt?.policy_number||'';$('rDate').value=today();$('rNextDate').value=payment?(paymentCount(payment.patient_id)===0&&pt?.first_payment_date?pt.first_payment_date:nextQuincena(today(),pt?.payment_mode||'quincenal')):(today());$('rAmount').value=payment?Number(payment.amount||0):0;let currentBalance=pt?Math.max(0,Number(pt.total||0)-Number(pt.paid||0)):0;$('rPrevious').value=payment?currentBalance+Number(payment.amount||0):0;$('rTabulator').value=pt?Number(pt.tabulator||0):(settings?.tabulator_default||0);$('rConcept').value=payment?.concept||'Abono';$('rNotes').value=payment?.reference||'';$('rMode').value=String(pt?.payment_mode||'quincenal').toLowerCase()==='mensual'?'Mensual':'Quincenal';if($('rPaymentMethod'))$('rPaymentMethod').value=String(pt?.payment_method||'efectivo').toLowerCase()==='transferencia'?'transferencia':'efectivo';$('rPaymentNumber').value=payment?paymentCount(payment.patient_id)+1:1;$('rPaymentTotal').value=pt?.installments||24;calc();$('receiptDialog').showModal()}function editReceipt(r){if(!r)return;const designPicker=$('manualReceiptDesign');if(designPicker)designPicker.value=String(getReceiptDesign());editingReceipt=r;selectedPayment=payments.find(p=>String(p.id)===String(r.payment_id))||null;let snap=r.receipt_snapshot||{};$('dialogTitle').textContent=`Editar recibo ${r.folio}`;$('receiptMsg').textContent='Los cambios conservarán el folio existente.';$('paymentSelect').innerHTML='<option value="">Recibo manual / sin pago vinculado</option>'+[...payments].sort(sortPayments).map(p=>`<option value="${p.id}">${esc(nameFor(p))} · ${date(p.paid_at||p.created_at)} · ${money(p.amount)}</option>`).join('');$('paymentSelect').value=r.payment_id||'';$('rPatient').value=r.patient_name||'';$('rHolder').value=snap.holder||r.patient_name||'';$('rAddress').value=snap.address||'';$('rContract').value=snap.patientFolio||snap.contract||'';$('rPhone').value=snap.phone||'';$('rClinic').value=r.clinic||'';if($('rManager'))$('rManager').value=r.manager_id||'';const linkedPatient=patientFor(r.patient_id);$('rPolicy').value=linkedPatient?String(linkedPatient.policy_number||''):String(snap.policy||'');$('rDate').value=snap.date||today();$('rNextDate').value=snap.nextDate||nextQuincena(snap.date||today());$('rAmount').value=Number(r.payment_amount||0);$('rPrevious').value=Number(r.previous_balance||0);$('rTabulator').value=Number(r.tabulator||0);$('rConcept').value=r.concept||'Abono';$('rNotes').value=r.notes||'';$('rMode').value=snap.mode||'Quincenal';if($('rPaymentMethod'))$('rPaymentMethod').value=snap.paymentMethod||'efectivo';$('rPaymentNumber').value=snap.paymentNumber||1;$('rPaymentTotal').value=snap.paymentTotal||24;$('saveReceipt').textContent='Guardar cambios';calc();$('receiptDialog').showModal()}function calc(){let amount=num('rAmount'),previous=num('rPrevious'),tab=num('rTabulator');$('rNet').textContent=money(Math.max(0,amount-tab));$('rNewBalance').textContent=money(Math.max(0,previous-amount));if($('rDate').value&&!$('rNextDate').dataset.manual)$('rNextDate').value=nextQuincena($('rDate').value,$('rMode').value)}function snapshot(){const selectedId=$('paymentSelect')?.value?payments.find(p=>String(p.id)===$('paymentSelect').value)?.patient_id:($('patientQuickSelect')?.value||editingReceipt?.patient_id||null);return {title:settings?.receipt_title||'RECIBO DE COBRANZA',footer:settings?.receipt_footer||'',logo:'logo-dental-jg.png',date:$('rDate').value,nextDate:$('rNextDate').value,holder:$('rHolder').value.trim(),address:$('rAddress').value.trim(),patientFolio:$('rContract').value.trim(),phone:$('rPhone').value.trim(),policy:(patientFor(selectedId)?.policy_number||''),mode:$('rMode').value.trim()||'Quincenal',paymentMethod:$('rPaymentMethod')?.value||'efectivo',paymentNumber:Math.max(1,parseInt($('rPaymentNumber').value)||1),paymentTotal:Math.max(1,parseInt($('rPaymentTotal').value)||24),folioPrefix:settings?.folio_prefix||'JG-',currency:'MXN',design:getReceiptDesign()}}function amountWords(value){let n=Math.round(Math.abs(Number(value)||0)*100),whole=Math.floor(n/100),cents=n%100;const u=['','UN','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE'],te=['DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISÉIS','DIECISIETE','DIECIOCHO','DIECINUEVE'],de=['','','VEINTE','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA'],ce=['','CIENTO','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS','SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS'];function under1000(x){if(x===0)return 'CERO';if(x===100)return 'CIEN';let out='';if(x>=100){out=ce[Math.floor(x/100)]+' ';x%=100}if(x>=10&&x<20)return out+te[x-10];if(x>=20&&x<30)return out+(x===20?'VEINTE':'VEINTI'+u[x-20]);if(x>=30){out+=de[Math.floor(x/10)];x%=10;if(x)out+=' Y '}if(x)out+=u[x];return out.trim()}let words;if(whole===0)words='CERO';else if(whole<1000)words=under1000(whole);else if(whole<1000000){let th=Math.floor(whole/1000);words=(th===1?'MIL':under1000(th)+' MIL')+(whole%1000?' '+under1000(whole%1000):'')}else words=String(whole);return `${words} PESOS ${String(cents).padStart(2,'0')}/100 M.N.`}function receiptHtml(r){
+@@ -50,5 +50,5 @@
+  <footer class="clean-receipt-footer"><strong>recibo no válido sin sello</strong></footer></article>`;
+ }
+ 
+-function printHtml(){const html=$('printArea').innerHTML;if(window.AndroidPrint&&window.AndroidPrint.printReceipt){try{window.AndroidPrint.printReceipt(html);return}catch(e){console.error('Android print bridge failed',e)}}window.print()}function previewReceipt(){let r={folio:'(se asigna al guardar)',patient_name:$('rPatient').value,clinic:$('rClinic').value,payment_amount:num('rAmount'),previous_balance:num('rPrevious'),tabulator:num('rTabulator'),net_amount:Math.max(0,num('rAmount')-num('rTabulator')),new_balance:Math.max(0,num('rPrevious')-num('rAmount')),concept:$('rConcept').value,notes:$('rNotes').value,created_at:$('rDate').value,patient_id:($('paymentSelect').value?payments.find(p=>String(p.id)===$('paymentSelect').value)?.patient_id:$('patientQuickSelect')?.value)||null,receipt_snapshot:snapshot()};const one=styledReceiptHtml(r);$('previewCanvas').innerHTML='<div class="receipt-preview-sheet">'+one+'</div>';$('previewCanvas').style.transform='none';$('previewCanvas').style.transformOrigin='top center';$('previewCanvas').style.width='100%';$('previewCanvas').style.minHeight='0';$('previewCanvas').dataset.zoom='1';$('zoomLevel').textContent='100%';$('receiptPreviewDialog').showModal()}function setPreviewZoom(next){let z=Math.max(.4,Math.min(3,Number(next)||1));$('previewCanvas').dataset.zoom=String(z);$('previewCanvas').style.transform='scale('+z+')';$('previewCanvas').style.transformOrigin='top center';$('previewViewport').style.overflow='auto';$('zoomLevel').textContent=Math.round(z*100)+'%'}$('zoomIn').onclick=()=>setPreviewZoom((Number($('previewCanvas').dataset.zoom)||1)+.15);$('zoomOut').onclick=()=>setPreviewZoom((Number($('previewCanvas').dataset.zoom)||1)-.15);$('zoomReset').onclick=()=>setPreviewZoom(1);$('closePreviewBtn').onclick=()=>$('receiptPreviewDialog').close();$('printPreviewBtn').onclick=()=>{ $('printArea').innerHTML=$('previewCanvas').innerHTML; $('receiptPreviewDialog').close(); printHtml(); };async function saveReceipt(){let patient=$('rPatient').value.trim();if(!patient){$('receiptMsg').textContent='Escribe el nombre del paciente.';return}let amount=num('rAmount'),prev=num('rPrevious'),tab=num('rTabulator'),payId=$('paymentSelect').value||null,pay=payId?payments.find(p=>String(p.id)===payId):null,selectedPatientId=pay?.patient_id||$('patientQuickSelect')?.value||editingReceipt?.patient_id||null,linkedPatient=patientFor(selectedPatientId),canonicalPatientName=linkedPatient?fullPatientName(linkedPatient):patient;if(!selectedPatientId){$('receiptMsg').textContent='Selecciona el cliente al que corresponde el recibo. Puedes dejarlo sin pago vinculado, pero debe tener cliente.';return}if(selectedPatientId&&!canonicalPatientName){$('receiptMsg').textContent='El paciente vinculado no tiene nombre completo. Corrige sus datos en Registro de clientes antes de generar el recibo.';return}patient=canonicalPatientName;$('rPatient').value=patient;if(!editingReceipt&&payId&&receipts.some(r=>String(r.payment_id)===String(payId))){$('receiptMsg').textContent='Este pago ya tiene un recibo. Abre el recibo existente para imprimirlo y evitar duplicados.';return}if(amount<=0){$('receiptMsg').textContent='El importe cobrado debe ser mayor que cero.';return}if(amount<0||prev<0||tab<0){$('receiptMsg').textContent='Los importes deben ser cero o mayores.';return}const b=$('saveReceipt');b.disabled=true;b.textContent=editingReceipt?'Guardando…':'Generando…';try{let snap=editingReceipt?{...(editingReceipt.receipt_snapshot||{}),title:editingReceipt.receipt_snapshot?.title||settings?.receipt_title||'RECIBO DE COBRANZA',footer:editingReceipt.receipt_snapshot?.footer||settings?.receipt_footer||'',logo:'logo-dental-jg.png',date:$('rDate').value,folioPrefix:settings?.folio_prefix||'JG-',currency:'MXN'}:snapshot();snap.date=$('rDate').value;Object.assign(snap,{nextDate:$('rNextDate').value,holder:$('rHolder').value.trim(),address:$('rAddress').value.trim(),patientFolio:$('rContract').value.trim(),phone:$('rPhone').value.trim(),policy:(patientFor(selectedPatientId)?.policy_number||''),mode:$('rMode').value.trim()||'Quincenal',paymentMethod:$('rPaymentMethod')?.value||'efectivo',paymentNumber:Math.max(1,parseInt($('rPaymentNumber').value)||1),paymentTotal:Math.max(1,parseInt($('rPaymentTotal').value)||24)});let values={payment_id:payId,patient_id:selectedPatientId,manager_id:$('rManager')?.value||null,patient_name:patient,clinic:$('rClinic').value.trim(),payment_amount:amount,previous_balance:prev,tabulator:tab,net_amount:Math.max(0,amount-tab),new_balance:Math.max(0,prev-amount),concept:$('rConcept').value.trim()||'Abono',notes:$('rNotes').value.trim(),receipt_snapshot:snap};let r;const wasEditing=!!editingReceipt;if(editingReceipt){let {data,error}=await db.rpc('update_collection_receipt',{p_receipt_id:editingReceipt.id,p_payment_id:payId,p_patient_id:selectedPatientId,p_manager_id:$('rManager')?.value||null,p_patient_name:patient,p_clinic:$('rClinic').value.trim(),p_payment_amount:amount,p_previous_balance:prev,p_tabulator:tab,p_new_balance:Math.max(0,prev-amount),p_concept:$('rConcept').value.trim()||'Abono',p_notes:$('rNotes').value.trim(),p_snapshot:snap});if(error)throw error;r=Array.isArray(data)?data[0]:data;receipts=receipts.map(x=>x.id===r.id?r:x)}else{let {data,error}=await db.rpc('create_collection_receipt',{p_payment_id:payId,p_patient_id:selectedPatientId,p_patient_name:patient,p_clinic:$('rClinic').value.trim(),p_payment_amount:amount,p_previous_balance:prev,p_tabulator:tab,p_new_balance:Math.max(0,prev-amount),p_concept:$('rConcept').value.trim()||'Abono',p_notes:$('rNotes').value.trim(),p_snapshot:snap,p_manager_id:$('rManager')?.value||null});if(error)throw error;r=Array.isArray(data)?data[0]:data;receipts=[r,...receipts.filter(x=>String(x.id)!==String(r.id))];await loadSettings()}renderReceipts();$('receiptDialog').close();editingReceipt=null;$('saveReceipt').textContent='Generar folio y guardar';printReceipt(r);toast(wasEditing?`Recibo ${r.folio} actualizado`:`Recibo ${r.folio} generado`);if(!wasEditing&&confirm('Recibo generado. ¿Deseas previsualizar e imprimir el listado de recibos de la cartera quincenal?')){page('portfolios');if(!$('reportManager')?.value&&managers.length)$('reportManager').value=managers[0].id;await generateAndPrintPortfolio()}}catch(e){console.error(e);$('receiptMsg').textContent='No se pudo guardar el recibo. Ejecuta supabase_cobranza_v1.sql y revisa los permisos. Detalle: '+(e.message||'error de conexión')}finally{b.disabled=false;b.textContent=editingReceipt?'Guardar cambios':'Generar folio y guardar'}}function getReceiptDesign(){const n=Number(localStorage.getItem('dentaljg_receipt_design')||'1');return Number.isInteger(n)&&n>=1&&n<=10?n:1}function styledReceiptHtml(r){return receiptHtml(r)}function initReceiptDesign(){const sel=$('receiptDesign');if(!sel)return;sel.value=String(getReceiptDesign());sel.onchange=()=>{const n=Math.max(1,Math.min(10,Number(sel.value)||1));localStorage.setItem('dentaljg_receipt_design',String(n));if($('previewCanvas')?.innerHTML){$('previewCanvas').innerHTML=$('previewCanvas').innerHTML.replace(/receipt-design-\d+/g,'receipt-design-'+n)}toast('Diseño de recibo actualizado.')} }function initPortfolioReceiptDesign(){const sel=$('portfolioReceiptDesign');if(!sel)return;sel.value=String(getReceiptDesign());sel.onchange=()=>{const n=Math.max(1,Math.min(10,Number(sel.value)||1));localStorage.setItem('dentaljg_receipt_design',String(n));if($('receiptDesign'))$('receiptDesign').value=String(n);if($('manualReceiptDesign'))$('manualReceiptDesign').value=String(n);toast('Formato de recibo seleccionado para la cartera.')}}function initManualReceiptDesign(){const sel=$('manualReceiptDesign');if(!sel)return;sel.value=String(getReceiptDesign());sel.onchange=()=>{const n=Math.max(1,Math.min(10,Number(sel.value)||1));localStorage.setItem('dentaljg_receipt_design',String(n));const config=$('receiptDesign');if(config)config.value=String(n);if($('previewCanvas')?.innerHTML)$('previewCanvas').innerHTML=$('previewCanvas').innerHTML.replace(/receipt-design-\d+/g,'receipt-design-'+n);toast('Diseño aplicado al recibo.')}}function printReceipt(r){const one=styledReceiptHtml(r);$('printArea').innerHTML='<div class="receipt-print-sheet">'+one+'</div>';printHtml()}async function saveSettings(e){e.preventDefault();$('settingsMsg').textContent='Guardando…';let vals={user_id:user.id,receipt_title:$('receiptTitle').value.trim()||'RECIBO DE COBRANZA',folio_prefix:$('folioPrefix').value.trim(),next_folio:Math.max(1,parseInt($('nextFolio').value)||1),folio_digits:parseInt($('folioDigits').value)||6,tabulator_default:num('tabulatorDefault'),receipt_footer:$('receiptFooter').value.trim(),updated_at:new Date().toISOString()};try{let {data,error}=await db.from('collection_receipt_settings').upsert(vals,{onConflict:'user_id'}).select().single();if(error)throw error;settings=data;$('settingsMsg').textContent='Configuración guardada.';toast('Configuración guardada')}catch(e){$('settingsMsg').textContent='No se guardó. Verifica la migración SQL y los permisos.';console.error(e)}}async function login(email,password){$('loginMsg').textContent='Validando…';if(!cfg.supabaseUrl||!cfg.supabaseAnonKey){$('loginMsg').textContent='Falta configurar config.js de Cobranza';return}if(!db)db=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,storage:window.localStorage}});let result;try{result=await db.auth.signInWithPassword({email,password})}catch(e){$('loginMsg').textContent='No se pudo contactar Supabase. Revisa internet e inténtalo otra vez.';return}let {data,error}=result;if(error){$('loginMsg').textContent='No se pudo iniciar sesión: '+(error.message||'revisa correo y contraseña');return}user=data.user;start()}async function start(){if(!user)return;$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');connection(false,'Conectando con Supabase…');try{await loadSettings()}catch(e){console.error(e);toast('Conexión iniciada, pero falta instalar el SQL de recibos/configuración.');}await load(true);await loadPortfolioData();try{const roleResult=await db.from('app_user_roles').select('role').eq('user_id',user.id);const userRoles=roleResult.error?[]:(roleResult.data||[]).map(r=>String(r.role||'').toLowerCase());currentRole=['admin','cobranza','registro','gestor'].find(role=>userRoles.includes(role))||'';isAdmin=userRoles.includes('admin');canManageClients=['admin','cobranza'].some(role=>userRoles.includes(role))}catch(e){currentRole='';isAdmin=false;canManageClients=false}if($('clinicForm'))$('clinicForm').classList.toggle('hidden',!isAdmin);await loadClinics();realtime();page('home')}
++function printHtml(){const html=$('printArea').innerHTML;if(window.AndroidPrint&&window.AndroidPrint.printReceipt){try{window.AndroidPrint.printReceipt(html);return}catch(e){console.error('Android print bridge failed',e)}}window.print()}function previewReceipt(){let r={folio:'(se asigna al guardar)',patient_name:$('rPatient').value,clinic:$('rClinic').value,payment_amount:num('rAmount'),previous_balance:num('rPrevious'),tabulator:num('rTabulator'),net_amount:Math.max(0,num('rAmount')-num('rTabulator')),new_balance:Math.max(0,num('rPrevious')-num('rAmount')),concept:$('rConcept').value,notes:$('rNotes').value,created_at:$('rDate').value,patient_id:($('paymentSelect').value?payments.find(p=>String(p.id)===$('paymentSelect').value)?.patient_id:$('patientQuickSelect')?.value)||null,receipt_snapshot:snapshot()};const one=styledReceiptHtml(r);$('previewCanvas').innerHTML='<div class="receipt-preview-sheet">'+one+'</div>';$('previewCanvas').style.transform='none';$('previewCanvas').style.transformOrigin='top center';$('previewCanvas').style.width='100%';$('previewCanvas').style.minHeight='0';$('previewCanvas').dataset.zoom='1';$('zoomLevel').textContent='100%';$('receiptPreviewDialog').showModal()}function setPreviewZoom(next){let z=Math.max(.4,Math.min(3,Number(next)||1));$('previewCanvas').dataset.zoom=String(z);$('previewCanvas').style.transform='scale('+z+')';$('previewCanvas').style.transformOrigin='top center';$('previewViewport').style.overflow='auto';$('zoomLevel').textContent=Math.round(z*100)+'%'}$('zoomIn').onclick=()=>setPreviewZoom((Number($('previewCanvas').dataset.zoom)||1)+.15);$('zoomOut').onclick=()=>setPreviewZoom((Number($('previewCanvas').dataset.zoom)||1)-.15);$('zoomReset').onclick=()=>setPreviewZoom(1);$('closePreviewBtn').onclick=()=>$('receiptPreviewDialog').close();$('printPreviewBtn').onclick=()=>{ $('printArea').innerHTML=$('previewCanvas').innerHTML; $('receiptPreviewDialog').close(); printHtml(); };async function saveReceipt(){let patient=$('rPatient').value.trim();if(!patient){$('receiptMsg').textContent='Escribe el nombre del paciente.';return}let amount=num('rAmount'),prev=num('rPrevious'),tab=num('rTabulator'),payId=$('paymentSelect').value||null,pay=payId?payments.find(p=>String(p.id)===payId):null,selectedPatientId=pay?.patient_id||$('patientQuickSelect')?.value||editingReceipt?.patient_id||null,linkedPatient=patientFor(selectedPatientId),canonicalPatientName=linkedPatient?fullPatientName(linkedPatient):patient;if(selectedPatientId&&!canonicalPatientName){$('receiptMsg').textContent='El paciente vinculado no tiene nombre completo. Corrige sus datos en Registro de clientes antes de generar el recibo.';return}patient=canonicalPatientName;$('rPatient').value=patient;if(!editingReceipt&&payId&&receipts.some(r=>String(r.payment_id)===String(payId))){$('receiptMsg').textContent='Este pago ya tiene un recibo. Abre el recibo existente para imprimirlo y evitar duplicados.';return}if(amount<=0){$('receiptMsg').textContent='El importe cobrado debe ser mayor que cero.';return}if(amount<0||prev<0||tab<0){$('receiptMsg').textContent='Los importes deben ser cero o mayores.';return}const b=$('saveReceipt');b.disabled=true;b.textContent=editingReceipt?'Guardando…':'Generando…';try{let snap=editingReceipt?{...(editingReceipt.receipt_snapshot||{}),title:editingReceipt.receipt_snapshot?.title||settings?.receipt_title||'RECIBO DE COBRANZA',footer:editingReceipt.receipt_snapshot?.footer||settings?.receipt_footer||'',logo:'logo-dental-jg.png',date:$('rDate').value,folioPrefix:settings?.folio_prefix||'JG-',currency:'MXN'}:snapshot();snap.date=$('rDate').value;Object.assign(snap,{nextDate:$('rNextDate').value,holder:$('rHolder').value.trim(),address:$('rAddress').value.trim(),patientFolio:$('rContract').value.trim(),phone:$('rPhone').value.trim(),policy:(patientFor(selectedPatientId)?.policy_number||''),mode:$('rMode').value.trim()||'Quincenal',paymentMethod:$('rPaymentMethod')?.value||'efectivo',paymentNumber:Math.max(1,parseInt($('rPaymentNumber').value)||1),paymentTotal:Math.max(1,parseInt($('rPaymentTotal').value)||24)});let values={payment_id:payId,patient_id:selectedPatientId,manager_id:$('rManager')?.value||null,patient_name:patient,clinic:$('rClinic').value.trim(),payment_amount:amount,previous_balance:prev,tabulator:tab,net_amount:Math.max(0,amount-tab),new_balance:Math.max(0,prev-amount),concept:$('rConcept').value.trim()||'Abono',notes:$('rNotes').value.trim(),receipt_snapshot:snap};let r;const wasEditing=!!editingReceipt;if(editingReceipt){let {data,error}=await db.from('collection_receipts').update(values).eq('id',editingReceipt.id).eq('created_by',user.id).select().single();if(error)throw error;r=data;receipts=receipts.map(x=>x.id===r.id?r:x)}else{let {data,error}=await db.rpc('create_collection_receipt',{p_payment_id:payId,p_patient_id:selectedPatientId,p_patient_name:patient,p_clinic:$('rClinic').value.trim(),p_payment_amount:amount,p_previous_balance:prev,p_tabulator:tab,p_new_balance:Math.max(0,prev-amount),p_concept:$('rConcept').value.trim()||'Abono',p_notes:$('rNotes').value.trim(),p_snapshot:snap,p_manager_id:$('rManager')?.value||null});if(error)throw error;r=Array.isArray(data)?data[0]:data;receipts=[r,...receipts.filter(x=>String(x.id)!==String(r.id))];await loadSettings()}renderReceipts();$('receiptDialog').close();editingReceipt=null;$('saveReceipt').textContent='Generar folio y guardar';printReceipt(r);toast(wasEditing?`Recibo ${r.folio} actualizado`:`Recibo ${r.folio} generado`);if(!wasEditing&&confirm('Recibo generado. ¿Deseas previsualizar e imprimir el listado de recibos de la cartera quincenal?')){page('portfolios');if(!$('reportManager')?.value&&managers.length)$('reportManager').value=managers[0].id;await generateAndPrintPortfolio()}}catch(e){console.error(e);$('receiptMsg').textContent='No se pudo guardar el recibo. Ejecuta supabase_cobranza_v1.sql y revisa los permisos. Detalle: '+(e.message||'error de conexión')}finally{b.disabled=false;b.textContent=editingReceipt?'Guardar cambios':'Generar folio y guardar'}}function getReceiptDesign(){const n=Number(localStorage.getItem('dentaljg_receipt_design')||'1');return Number.isInteger(n)&&n>=1&&n<=10?n:1}function styledReceiptHtml(r){return receiptHtml(r)}function initReceiptDesign(){const sel=$('receiptDesign');if(!sel)return;sel.value=String(getReceiptDesign());sel.onchange=()=>{const n=Math.max(1,Math.min(10,Number(sel.value)||1));localStorage.setItem('dentaljg_receipt_design',String(n));if($('previewCanvas')?.innerHTML){$('previewCanvas').innerHTML=$('previewCanvas').innerHTML.replace(/receipt-design-\d+/g,'receipt-design-'+n)}toast('Diseño de recibo actualizado.')} }function initPortfolioReceiptDesign(){const sel=$('portfolioReceiptDesign');if(!sel)return;sel.value=String(getReceiptDesign());sel.onchange=()=>{const n=Math.max(1,Math.min(10,Number(sel.value)||1));localStorage.setItem('dentaljg_receipt_design',String(n));if($('receiptDesign'))$('receiptDesign').value=String(n);if($('manualReceiptDesign'))$('manualReceiptDesign').value=String(n);toast('Formato de recibo seleccionado para la cartera.')}}function initManualReceiptDesign(){const sel=$('manualReceiptDesign');if(!sel)return;sel.value=String(getReceiptDesign());sel.onchange=()=>{const n=Math.max(1,Math.min(10,Number(sel.value)||1));localStorage.setItem('dentaljg_receipt_design',String(n));const config=$('receiptDesign');if(config)config.value=String(n);if($('previewCanvas')?.innerHTML)$('previewCanvas').innerHTML=$('previewCanvas').innerHTML.replace(/receipt-design-\d+/g,'receipt-design-'+n);toast('Diseño aplicado al recibo.')}}function printReceipt(r){const one=styledReceiptHtml(r);$('printArea').innerHTML='<div class="receipt-print-sheet">'+one+'</div>';printHtml()}async function saveSettings(e){e.preventDefault();$('settingsMsg').textContent='Guardando…';let vals={user_id:user.id,receipt_title:$('receiptTitle').value.trim()||'RECIBO DE COBRANZA',folio_prefix:$('folioPrefix').value.trim(),next_folio:Math.max(1,parseInt($('nextFolio').value)||1),folio_digits:parseInt($('folioDigits').value)||6,tabulator_default:num('tabulatorDefault'),receipt_footer:$('receiptFooter').value.trim(),updated_at:new Date().toISOString()};try{let {data,error}=await db.from('collection_receipt_settings').upsert(vals,{onConflict:'user_id'}).select().single();if(error)throw error;settings=data;$('settingsMsg').textContent='Configuración guardada.';toast('Configuración guardada')}catch(e){$('settingsMsg').textContent='No se guardó. Verifica la migración SQL y los permisos.';console.error(e)}}async function login(email,password){$('loginMsg').textContent='Validando…';if(!cfg.supabaseUrl||!cfg.supabaseAnonKey){$('loginMsg').textContent='Falta configurar config.js de Cobranza';return}if(!db)db=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,storage:window.localStorage}});let result;try{result=await db.auth.signInWithPassword({email,password})}catch(e){$('loginMsg').textContent='No se pudo contactar Supabase. Revisa internet e inténtalo otra vez.';return}let {data,error}=result;if(error){$('loginMsg').textContent='No se pudo iniciar sesión: '+(error.message||'revisa correo y contraseña');return}user=data.user;await start()}async function readRoles(uid){let r=await db.from('app_user_roles').select('role').eq('user_id',uid);if(r.error&&/user_id|column|schema cache|does not exist/i.test(r.error.message||''))r=await db.from('app_user_roles').select('role').eq('id_usuario',uid);if(r.error)throw r.error;return (r.data||[]).map(x=>String(x.role||'').trim().toLowerCase())}async function start(){if(!user)return;$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');$('loginMsg').textContent='Verificando permisos…';try{const userRoles=await readRoles(user.id);currentRole=['admin','cobranza','registro','gestor'].find(role=>userRoles.includes(role))||'';if(!['admin','cobranza'].includes(currentRole)){await db.auth.signOut();user=null;currentRole='';isAdmin=false;canManageClients=false;$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');$('loginMsg').textContent='Acceso denegado: esta aplicación requiere el rol Cobranza o Administración. Pide que te asignen el permiso correcto.';return}isAdmin=userRoles.includes('admin');canManageClients=['admin','cobranza'].some(role=>userRoles.includes(role));$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');connection(false,'Conectando con Supabase…');try{await loadSettings()}catch(e){console.error(e);toast('Sesión válida; falta revisar la configuración de recibos.')}await load(true);await loadPortfolioData();await loadClinics();realtime();page('home')}catch(e){console.error('No se pudieron verificar los permisos de Cobranza',e);await db.auth.signOut();user=null;currentRole='';isAdmin=false;canManageClients=false;$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');$('loginMsg').textContent='No se pudieron verificar tus permisos en Supabase: '+(e.message||'error de consulta')+'. Comprueba la columna user_id/id_usuario y los permisos de lectura de app_user_roles.'}}
+ async function logout(){if(channel)await db.removeChannel(channel);await db.auth.signOut();user=null;$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value=''}$('loginForm').addEventListener('submit',e=>{e.preventDefault();login($('email').value.trim(),$('password').value)});$('logout').onclick=logout;document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>page(b.dataset.page));if($('clinicForm'))$('clinicForm').addEventListener('submit',addClinic);if($('refreshClinics'))$('refreshClinics').onclick=loadClinics;initReceiptDesign();initManualReceiptDesign();initPortfolioReceiptDesign();$('paymentSearch').oninput=render;if($('archiveSearch'))$('archiveSearch').oninput=renderArchive;if($('activeArchiveSearch'))$('activeArchiveSearch').oninput=renderArchive;if($('refreshArchive'))$('refreshArchive').onclick=loadArchive;$('refresh').onclick=()=>load();if($('newReceipt'))$('newReceipt').onclick=()=>openReceipt();$('closeDialog').onclick=()=>$('receiptDialog').close();if($('patientQuickSelect'))$('patientQuickSelect').onchange=()=>{const pt=patientFor($('patientQuickSelect').value);if(!pt){if(!$('paymentSelect').value){$('rPatient').value='';$('rHolder').value='';$('rContract').value='';$('rAddress').value='';$('rPhone').value='';$('rClinic').value='';}return;}$('rPatient').value=fullPatientName(pt);$('rHolder').value=pt.holder_name||'';$('rContract').value=pt.folio||'';$('rAddress').value=pt.address||'';$('rPhone').value=pt.phone||'';$('rClinic').value=pt.clinic||'';$('rPolicy').value=pt.policy_number||'';$('rTabulator').value=Number(pt.tabulator??settings?.tabulator_default??0);$('rMode').value=String(pt.payment_mode||'quincenal').toLowerCase()==='mensual'?'Mensual':'Quincenal';if($('rPaymentMethod'))$('rPaymentMethod').value=String(pt.payment_method||'efectivo').toLowerCase()==='transferencia'?'transferencia':'efectivo';$('rPaymentNumber').value=paymentCount(pt.id)+1;$('rPaymentTotal').value=pt.installments||24;$('rPrevious').value=Math.max(0,Number(pt.total||0)-Number(pt.paid||0));$('rNextDate').value=pt.first_payment_date||nextQuincena($('rDate').value,$('rMode').value);calc()};$('paymentSelect').onchange=()=>{let p=payments.find(x=>String(x.id)===$('paymentSelect').value);if(p){if($('patientQuickSelect'))$('patientQuickSelect').value=p.patient_id||'';$('rPatient').value=nameFor(p);$('rClinic').value=clinicFor(p);$('rAmount').value=Number(p.amount||0);$('rConcept').value=p.concept||'Abono';$('rNotes').value=p.reference||'';let pt=patientFor(p.patient_id);$('rHolder').value=pt?.holder_name||'';$('rPhone').value=pt?.phone||'';$('rAddress').value=pt?.address||'';$('rContract').value=pt?.folio||'';$('rPolicy').value=pt?.policy_number||'';$('rTabulator').value=Number(pt?.tabulator??settings?.tabulator_default??0);$('rMode').value=String(pt?.payment_mode||'quincenal').toLowerCase()==='mensual'?'Mensual':'Quincenal';if($('rPaymentMethod'))$('rPaymentMethod').value=String(pt?.payment_method||'efectivo').toLowerCase()==='transferencia'?'transferencia':'efectivo';$('rPaymentNumber').value=paymentCount(p.patient_id)+1;$('rPaymentTotal').value=pt?.installments||24;$('rPrevious').value=Math.max(0,Number(pt?.total||0)-Number(pt?.paid||0)+Number(p.amount||0));$('rNextDate').value=nextQuincena($('rDate').value,$('rMode').value);calc()}};['rAmount','rPrevious','rTabulator'].forEach(id=>$(id).addEventListener('input',calc));$('rDate').addEventListener('change',()=>{if(!$('rNextDate').dataset.manual)$('rNextDate').value=nextQuincena($('rDate').value,$('rMode').value)});$('rNextDate').addEventListener('change',()=>{$('rNextDate').dataset.manual='1'});$('rDate').addEventListener('change',()=>{$('rNextDate').dataset.manual=''});$('previewBtn').onclick=previewReceipt;$('saveReceipt').onclick=saveReceipt;$('settingsForm').addEventListener('submit',saveSettings);if($('generatePortfolios'))$('generatePortfolios').onclick=generatePortfolios;if($('receiptPortfolioManager'))$('receiptPortfolioManager').addEventListener('change',updatePortfolioSummary);if($('showPrintHistory'))$('showPrintHistory').onclick=showPrintHistory;if($('previewPortfolio'))$('previewPortfolio').onclick=()=>{const q=quincenaForNow();if($('reportQuincena')){$('reportQuincena').innerHTML=`<option value="${q}">${date(q)}</option>`;$('reportQuincena').value=q;}generateAndPrintPortfolio(false)};if($('printPortfolio'))$('printPortfolio').onclick=()=>{const q=quincenaForNow();if($('reportQuincena')){$('reportQuincena').innerHTML=`<option value="${q}">${date(q)}</option>`;$('reportQuincena').value=q;}generateAndPrintPortfolio(true)};if($('reprintLastPortfolio'))$('reprintLastPortfolio').onclick=async()=>{let last=null;try{last=JSON.parse(localStorage.getItem('dentaljg_last_printed_listing_v1')||'null')}catch(e){}if(!last){toast('Todavía no hay un listado impreso en este dispositivo.');return}await loadSavedReports();const saved=savedReports.find(r=>String(r.id)===String(last.id));const report=saved||last;if(!confirm('Vas a reimprimir el último listado impreso: '+(report.quincena_date||'fecha desconocida')+' · '+(report.manager_name||'sin gestor')+'. ¿Continuar?'))return;const fresh=report.manager_id?rowsForManager(report.manager_id):[];previewPortfolioReport({...report,report_rows:fresh.length?fresh:report.report_rows||[]},null,true)};if($('printPortfolioArchive'))$('printPortfolioArchive').onclick=async()=>{const choice=prompt('¿Qué deseas reimprimir del archivo? 1 = Carteras; 2 = Listados; 3 = Recibos de otras fechas. Escribe 1, 2 o 3.','2');if(!['1','2','3'].includes(choice)){toast('Operación cancelada.');return}const requested=prompt('Fecha de la quincena (AAAA-MM-DD):',quincenaForNow());if(!requested)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(requested)||normalizeDateValue(requested)!==requested){toast('Fecha no válida. Usa AAAA-MM-DD.');return}if(choice==='1'||choice==='2'){await loadSavedReports();const matches=savedReports.filter(r=>normalizeDateValue(r.quincena_date)===requested);if(!matches.length){toast('No hay carteras o listados guardados para '+requested+'.');return}const options=matches.map((r,i)=>(i+1)+'. '+(r.manager_name||'Sin gestor')+' ('+(Array.isArray(r.report_rows)?r.report_rows.length:0)+' clientes)').join(' | ');const pick=Number(prompt('Selecciona el listado: '+options,'1'));const report=matches[pick-1];if(!report){toast('Selección no válida.');return}if(!confirm('Este listado de '+requested+' puede haberse impreso antes. ¿Deseas reimprimirlo?'))return;previewPortfolioReport(report,null,true);return}await load(true);const matches=receipts.filter(r=>normalizeDateValue(r.scheduled_for||r.receipt_snapshot?.scheduledFor||r.created_at)===requested);if(!matches.length){toast('No hay recibos archivados para '+requested+'.');return}const key='dentaljg_printed_receipts_v1',printed=JSON.parse(localStorage.getItem(key)||'[]'),ids=matches.map(r=>String(r.id||r.folio)),already=ids.filter(id=>printed.includes(id));if(already.length&&!confirm(already.length+' recibos de esta fecha ya se imprimieron. ¿Deseas reimprimirlos?'))return;const sheets=[];for(let i=0;i<matches.length;i+=4)sheets.push('<div class=\"receipt-print-sheet\">'+matches.slice(i,i+4).map(r=>styledReceiptHtml(r)).join('')+'</div>');$('printArea').innerHTML=sheets.join('');printHtml();localStorage.setItem(key,JSON.stringify([...new Set([...printed,...ids])]))};if($('generatePortfolioButton'))$('generatePortfolioButton').onclick=()=>generateNearestPortfolio();if($('generatePortfolioReceipts'))$('generatePortfolioReceipts').onclick=()=>generatePortfolioReceipts();if($('refreshPortfolios'))$('refreshPortfolios').onclick=async()=>{await load(true);await loadPortfolioData()};if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=1.0.7',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{});if(cfg.supabaseUrl&&cfg.supabaseAnonKey){db=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,storage:window.localStorage}});db.auth.getSession().then(async({data})=>{if(data.session){user=data.session.user;await start()}});db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'&&session&&!user){user=session.user;start()}})}})();
+--- a/cobranza-app/src/main/assets/service-worker.js
++++ b/cobranza-app/src/main/assets/service-worker.js
+@@ -1,5 +1,5 @@
+ /* DENTAL JG 10.8.40 — invalidación explícita de cachés antiguas */
+-const CACHE='dental-jg-1.0.7';
++const CACHE='dental-jg-1.0.6';
+ const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./logo-dental-jg.png','./logo-dental-jg.svg','./icon-192.png','./icon-512.png','./icon.svg','./manifest.webmanifest'];
+ self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS.filter(Boolean)).catch(()=>{})).then(()=>self.skipWaiting()));});
+ self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));});
+--- a/cobranza-app/src/main/assets/supabase_cobranza_v1.sql
++++ b/cobranza-app/src/main/assets/supabase_cobranza_v1.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG Cobranza: migración aditiva. No borra ni modifica pacientes ni pagos existentes.
+ create table if not exists public.collection_receipt_settings (
+   user_id uuid primary key references auth.users(id) on delete cascade,
+--- a/panel-apk/src/main/assets/DENTAL_JG_10_8_10_REGISTRO_FOLIO.sql
++++ b/panel-apk/src/main/assets/DENTAL_JG_10_8_10_REGISTRO_FOLIO.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.10: campos de Registro y folio de sistema.
+ create sequence if not exists public.dental_jg_patient_folio_seq;
+ alter table public.patients add column if not exists folio text;
+--- a/panel-apk/src/main/assets/DENTAL_JG_10_8_11_CORRECCIONES.sql
++++ b/panel-apk/src/main/assets/DENTAL_JG_10_8_11_CORRECCIONES.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.11 — correcciones solicitadas
+ -- Ejecutar una sola vez (o volver a ejecutar sin borrar los datos existentes).
+ -- IMPORTANTE: la eliminación definitiva borra cliente, pagos, recibos y asignaciones; no archiva.
+--- a/panel-apk/src/main/assets/DENTAL_JG_10_8_14_FORMULARIO_PAGOS_TITULAR.sql
++++ b/panel-apk/src/main/assets/DENTAL_JG_10_8_14_FORMULARIO_PAGOS_TITULAR.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.14: datos de titular y condiciones de pago sincronizadas con Cobranza.
+ -- Ejecutar en Supabase SQL Editor antes de usar los nuevos campos.
+ alter table public.patients add column if not exists holder_name text not null default '';
+--- a/panel-apk/src/main/assets/DENTAL_JG_10_8_21_MIGRACION_GESTORES_POLIZAS.sql
++++ b/panel-apk/src/main/assets/DENTAL_JG_10_8_21_MIGRACION_GESTORES_POLIZAS.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.21: número de póliza, gestor asignado y clave de gestor.
+ -- Ejecutar en Supabase SQL Editor. Hacer respaldo antes de aplicar.
+ alter table public.patients add column if not exists policy_type text;
+--- a/panel-apk/src/main/assets/DENTAL_JG_10_8_36_PERMISOS_EDITAR_GESTOR.sql
++++ b/panel-apk/src/main/assets/DENTAL_JG_10_8_36_PERMISOS_EDITAR_GESTOR.sql
+@@ -1,10 +1,3 @@
+--- AVISO DE COMPATIBILIDAD DENTAL JG 1.0.6
+--- ARCHIVO HISTÓRICO/SUPERSEDIDO: NO EJECUTAR DESPUÉS DE LA MIGRACIÓN INTEGRADA.
+--- Para esta versión, usar únicamente el archivo raíz:
+---   DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql
+--- Este script antiguo conserva políticas/privilegios de versiones anteriores y puede
+--- reabrir permisos que la migración integrada ahora restringe por rol.
+-
+ -- DENTAL JG 10.8.9 — gestores compartidos, importes por gestor y archivo de reportes quincenales.
+ -- Ejecutar UNA vez en Supabase SQL Editor del proyecto conectado a todas las apps.
+ -- No elimina pacientes, pagos ni recibos existentes.
+--- a/panel-apk/src/main/assets/DENTAL_JG_FASE10_SEGURIDAD_RLS.sql
++++ b/panel-apk/src/main/assets/DENTAL_JG_FASE10_SEGURIDAD_RLS.sql
+@@ -1,10 +1,3 @@
+--- AVISO DE COMPATIBILIDAD DENTAL JG 1.0.6
+--- ARCHIVO HISTÓRICO/SUPERSEDIDO: NO EJECUTAR DESPUÉS DE LA MIGRACIÓN INTEGRADA.
+--- Para esta versión, usar únicamente el archivo raíz:
+---   DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql
+--- Este script antiguo conserva políticas/privilegios de versiones anteriores y puede
+--- reabrir permisos que la migración integrada ahora restringe por rol.
+-
+ BEGIN;
+ 
+ -- DENTAL JG - Fase 10: acceso por roles y sincronización Gestor por RPC.
+--- a/panel-apk/src/main/assets/app.js
++++ b/panel-apk/src/main/assets/app.js
+@@ -175,7 +175,19 @@
+   $('deletePatientManual').addEventListener('click',()=>{const id=$('patientDialog')?.dataset.patientId;if(id)deletePatientPermanently(id);});$('editPatientManual')?.addEventListener('click',()=>{const id=$('patientDialog')?.dataset.patientId;if(id)editPatient(id);});
+   $('patientSearch').addEventListener('input',render);$('paymentSearch').addEventListener('input',render);$('refreshPatients').addEventListener('click',load);$('refreshPayments').addEventListener('click',load);$('refreshClinics').addEventListener('click',load);
+   $('clinicFilter').addEventListener('change',e=>{selectedClinic=e.target.value;render();});
+-  // El alta de pacientes está reservada a Registro de Clientes.
++  $('patientForm')?.addEventListener('submit',async e=>{
++    e.preventDefault();if(!client){toast('Inicia sesión antes de registrar pacientes.');return;}
++    const name=$('patientName').value.trim();const clinic=$('patientClinic').value.trim();
++    const total=Number($('patientTotal').value);const installments=Math.max(0,Math.trunc(Number($('patientInstallments').value)||0));const installmentAmount=Number($('patientInstallmentAmount').value)||0;
++    if(!name){toast('Escribe el nombre del paciente.');return;}
++    if(!clinic){toast('Primero registra una clínica y selecciónala.');return;}
++    if(!Number.isFinite(total)||total<0||!Number.isFinite(installmentAmount)||installmentAmount<0){toast('Revisa los importes: no pueden ser negativos.');return;}
++    const form=$('patientForm');const button=form.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Guardando…';
++    const payload={name,phone:$('patientPhone').value.trim(),treatment:$('patientTreatment').value.trim(),clinic,policy_number:$('patientPolicy').value.trim(),total,paid:0,installments,installment_amount:installmentAmount,source_device:'DENTAL JG'};
++    const {data,error}=await client.from('patients').insert(payload).select().single();button.disabled=false;button.textContent='+ Guardar paciente';
++    if(error){console.error('Error al guardar paciente:',error);toast('No se pudo guardar: '+(error.message||'revisa los permisos de patients en Supabase.'));return;}
++    patients.unshift(data);form.reset();$('patientTotal').value='0';$('patientInstallments').value='0';$('patientInstallmentAmount').value='0';render();toast('Paciente registrado correctamente.');
++  });
+   $('clinicForm').addEventListener('submit',async e=>{
+     e.preventDefault();if(!client)return;
+     if(!clinicTableAvailable){toast('Primero ejecuta el archivo supabase_schema.sql en Supabase.');return;}
+@@ -192,7 +204,8 @@
+   if(!configured)$('setupNotice').classList.remove('hidden');
+   $('todayLabel').textContent=new Intl.DateTimeFormat('es-MX',{dateStyle:'medium'}).format(new Date());
+   // Supabase persists the login in local storage. Restore it automatically when the app reopens.
+-  if(configured){try{client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});client.auth.getSession().then(({data,error})=>{if(!error&&data&&data.session){showApp();load(true);realtime();}}).catch(err=>console.warn('No se pudo restaurar la sesión',err));client.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'&&session&&$('appView').classList.contains('hidden')){showApp();load(true);realtime();}});}catch(err){console.error('No se pudo inicializar la sesión',err);}}
++  async function restoreAdminSession(session){if(!session||!client)return;try{const {data,error}=await client.functions.invoke('administrar-usuarios',{body:{action:'my_roles'}});if(error)throw error;const roles=(data?.roles||[]).map(r=>String(r).toLowerCase());if(!roles.includes('admin')){await client.auth.signOut();msg('Acceso denegado: esta cuenta no tiene rol de Administración.');return;}const {data:userData}=await client.auth.getUser();$('ownCurrentEmail').value=userData?.user?.email||'';showApp();await load(true);await loadAdminUsers();realtime();}catch(err){console.error('No se pudo verificar el rol al restaurar la sesión',err);await client.auth.signOut();msg('No se pudo verificar el permiso de Administración. Inicia sesión de nuevo o revisa la función administrar-usuarios.');}}
++  if(configured){try{client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});client.auth.getSession().then(({data,error})=>{if(!error&&data&&data.session)restoreAdminSession(data.session);}).catch(err=>console.warn('No se pudo restaurar la sesión',err));client.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'&&session&&$('appView').classList.contains('hidden'))restoreAdminSession(session);if(event==='SIGNED_OUT'){$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');}});}catch(err){console.error('No se pudo inicializar la sesión',err);}}
+ 
+   // Panel navegador: selector funcional de 10 diseños de recibo.
+   const panelDesign=$('panelReceiptDesign');
+--- a/panel-apk/src/main/assets/index.html
++++ b/panel-apk/src/main/assets/index.html
+@@ -3,7 +3,7 @@
+ <head>
+   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+   <meta name="theme-color" content="#1769c2"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png" type="image/svg+xml"><title>Admon App</title>
+-  <link rel="stylesheet" href="styles.css?v=1.0.6.6">
++  <link rel="stylesheet" href="styles.css?v=1.0.7.7">
+   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+ </head>
+ <body>
+@@ -105,5 +105,5 @@
+     </div>
+   </section>
+   <div id="toast" class="toast" role="status"></div>
+-  <script src="config.js?v=1.0.6.6"></script><script src="app.js?v=1.0.6.7"></script><script>window.DENTAL_APP_NAME="Administración";</script><script>if("serviceWorker" in navigator && location.protocol.startsWith("http")){navigator.serviceWorker.register("service-worker.js?v=1.0.7",{updateViaCache:"none"}).then(reg=>reg.update()).catch(()=>{});}</script>
++  <script src="config.js?v=1.0.7.7"></script><script src="app.js?v=1.0.7.7"></script><script>window.DENTAL_APP_NAME="Administración";</script><script>if("serviceWorker" in navigator && location.protocol.startsWith("http")){navigator.serviceWorker.register("service-worker.js?v=1.0.7",{updateViaCache:"none"}).then(reg=>reg.update()).catch(()=>{});}</script>
+ <div class="app-version">Versión 1.0.6</div></body></html>
+--- a/panel-apk/src/main/assets/service-worker.js
++++ b/panel-apk/src/main/assets/service-worker.js
+@@ -1,4 +1,4 @@
+-const CACHE_NAME = 'dental-jg-1.0.7';
++const CACHE_NAME = 'dental-jg-1.0.6';
+ const SHELL = ['./', './index.html', './styles.css', './config.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './logo-dental-jg.png'];
+ self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL))); self.skipWaiting(); });
+ self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+--- a/panel-apk/src/main/assets/supabase_schema.sql
++++ b/panel-apk/src/main/assets/supabase_schema.sql
+@@ -1,9 +1,3 @@
+--- AVISO DE COMPATIBILIDAD DENTAL JG 1.0.6
+--- SQL DE INSTALACIÓN BASE PARA UN PROYECTO NUEVO, VACÍO. NO VOLVER A EJECUTAR
+--- sobre el proyecto de producción después de la migración integrada: contiene
+--- políticas históricas más amplias que podrían revertir el endurecimiento por rol.
+--- Proyecto existente: usar DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql (archivo raíz).
+-
+ -- DENTAL JG · esquema inicial y migración compatible con el panel multi-clínica
+ -- Se puede volver a ejecutar sin borrar pacientes ni pagos existentes.
+ create extension if not exists pgcrypto;
+--- a/registro-app/src/main/assets/DENTAL_JG_10_8_21_MIGRACION_GESTORES_POLIZAS.sql
++++ b/registro-app/src/main/assets/DENTAL_JG_10_8_21_MIGRACION_GESTORES_POLIZAS.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.21: número de póliza, gestor asignado y clave de gestor.
+ -- Ejecutar en Supabase SQL Editor. Hacer respaldo antes de aplicar.
+ alter table public.patients add column if not exists policy_type text;
+--- a/registro-app/src/main/assets/registro-web/DENTAL_JG_10_8_10_REGISTRO_FOLIO.sql
++++ b/registro-app/src/main/assets/registro-web/DENTAL_JG_10_8_10_REGISTRO_FOLIO.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.10: campos de Registro y folio de sistema.
+ create sequence if not exists public.dental_jg_patient_folio_seq;
+ alter table public.patients add column if not exists folio text;
+--- a/registro-app/src/main/assets/registro-web/DENTAL_JG_10_8_14_FORMULARIO_PAGOS_TITULAR.sql
++++ b/registro-app/src/main/assets/registro-web/DENTAL_JG_10_8_14_FORMULARIO_PAGOS_TITULAR.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG 10.8.14: datos de titular y condiciones de pago sincronizadas con Cobranza.
+ -- Ejecutar en Supabase SQL Editor antes de usar los nuevos campos.
+ alter table public.patients add column if not exists holder_name text not null default '';
+--- a/registro-app/src/main/assets/registro-web/DENTAL_JG_FASE7_TRATAMIENTO_REGISTRO.sql
++++ b/registro-app/src/main/assets/registro-web/DENTAL_JG_FASE7_TRATAMIENTO_REGISTRO.sql
+@@ -1,8 +1,3 @@
+--- AVISO DENTAL JG 1.0.6: SCRIPT HISTÓRICO / SUPERSEDIDO PARA LA MIGRACIÓN INTEGRADA.
+--- No ejecutar después de DENTAL_JG_1_0_6_MIGRACION_SQL_INTEGRADA.sql: puede recrear
+--- firmas antiguas de funciones, políticas RLS o permisos que esta versión restringe.
+--- Conservar solo como referencia histórica.
+-
+ -- DENTAL JG - Fase 7: guardar Tratamiento y Observaciones en sus campos correctos.
+ -- Migración aditiva: no modifica pacientes existentes, pagos ni saldos.
+ -- Ejecutar en Supabase después de respaldar y antes de usar la APK/web de Registro corregida.
+--- a/registro-app/src/main/assets/registro-web/app.js
++++ b/registro-app/src/main/assets/registro-web/app.js
+@@ -42,10 +42,19 @@
+     checkingUserId = candidateUser.id;
+     roleCheckPromise = (async () => {
+       msg('loginMsg', 'Verificando permisos…');
+-      const { data, error } = await db.from('app_user_roles')
++      // La tabla se ha encontrado en instalaciones con user_id y con id_usuario.
++      // Probar ambas columnas evita rechazar una sesión válida por diferencia de esquema.
++      let roleResult = await db.from('app_user_roles')
+         .select('role')
+         .eq('user_id', candidateUser.id)
+         .in('role', ['registro', 'admin']);
++      if (roleResult.error && /user_id|column|schema cache|does not exist/i.test(roleResult.error.message || '')) {
++        roleResult = await db.from('app_user_roles')
++          .select('role')
++          .eq('id_usuario', candidateUser.id)
++          .in('role', ['registro', 'admin']);+      }
++      const { data, error } = roleResult;
+ 
+       if (user && user.id !== candidateUser.id) return false;
+       if (error) {
+--- a/supabase/functions/administrar-usuarios/index.ts
++++ b/supabase/functions/administrar-usuarios/index.ts
+@@ -174,10 +174,17 @@
+ const action = String(body.action ?? "").trim().toLowerCase();
+ 
+ if (action === "my_roles") {
+-  const { data: roleRows, error: myRolesError } = await adminClient
++  let roleResult = await adminClient
+     .from("app_user_roles")
+     .select("role")
+     .eq("user_id", callerData.user.id);
++  if (roleResult.error && /user_id|column|schema cache|does not exist/i.test(roleResult.error.message || "")) {
++    roleResult = await adminClient
++      .from("app_user_roles")
++      .select("role")
++      .eq("id_usuario", callerData.user.id);
++  }
++  const { data: roleRows, error: myRolesError } = roleResult;
+ 
+   if (myRolesError) {
+     console.error("No se pudieron consultar los roles propios:", myRolesError.message);
