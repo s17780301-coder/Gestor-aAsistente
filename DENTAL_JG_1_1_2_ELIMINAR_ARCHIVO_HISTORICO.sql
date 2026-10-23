@@ -1,6 +1,8 @@
 -- DENTAL JG 1.1.2 — Eliminar un expediente histórico desde Cobranza
 -- Ejecutar una sola vez en Supabase SQL Editor, en el mismo proyecto usado por Cobranza.
 -- No modifica clientes activos ni otras filas históricas; elimina exclusivamente el archivo indicado.
+BEGIN;
+
 DROP FUNCTION IF EXISTS public.delete_archived_patient(uuid);
 
 CREATE OR REPLACE FUNCTION public.delete_archived_patient(p_archive_id uuid)
@@ -51,6 +53,4 @@ REVOKE ALL ON FUNCTION public.delete_archived_patient(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.delete_archived_patient(uuid) FROM anon;
 GRANT EXECUTE ON FUNCTION public.delete_archived_patient(uuid) TO authenticated;
 
-REVOKE ALL ON FUNCTION public.delete_archived_patient(uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.delete_archived_patient(uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.delete_archived_patient(uuid) TO authenticated;
+COMMIT;
