@@ -59,6 +59,8 @@ jobs:
           SOURCE_MANIFEST="$GITHUB_WORKSPACE/patches/DENTAL_JG_REPARACION_ACCESO_1_0_7.sha256"
           [[ -s "$BASE_ZIP" ]] || { echo "::error::Falta el ZIP base exacto DENTAL_JG_1_0_6_APPS_WEB_SQL_ACTUALIZADO.zip."; exit 1; }
           [[ -s "$SOURCE_PATCH" && -s "$SOURCE_MANIFEST" ]] || { echo "::error::Falta el parche o manifiesto de reparación 1.0.7."; exit 1; }
+          PATCH_BLOCKS="$(grep -c '^--- a/' "$SOURCE_PATCH")"
+          [[ "$PATCH_BLOCKS" == "44" ]] || { echo "::error::El parche 1.0.7 está incompleto ($PATCH_BLOCKS/44 bloques)."; exit 1; }
           ACTUAL_SHA="$(sha256sum "$BASE_ZIP" | awk '{print $1}')"
           EXPECTED_SHA="816f8ddf7de2d76eebc302e42a0b3e800b72f69597139b3d43a5d5758d56e402"
           if [[ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]]; then
