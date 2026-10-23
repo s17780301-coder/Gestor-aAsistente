@@ -731,7 +731,7 @@ jobs:
               if f.exists():
                   body=f.read_text(encoding="utf-8")
                   import re
-                  body=re.sub(r"Versión\\s+[0-9]+(?:\\.[0-9]+){1,3}", "Versión 1.0", body, flags=re.I)
+                  body=re.sub(r"Versión\s+[0-9]+(?:\.[0-9]+){1,3}", "Versión 1.0", body, flags=re.I)
                   f.write_text(body,encoding="utf-8")
           print("El submit queda registrado antes de la inicialización del resto del módulo y los errores se muestran en pantalla.")
           PY
