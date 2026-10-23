@@ -449,7 +449,7 @@ jobs:
               end = source.find(end_marker, start)
               if end < 0:
                   raise SystemExit("No se encontró el final del manejador de altas de Administración.")
-              source = source[:start] + "  // Alta de pacientes deshabilitada: el único módulo autorizado es Registro de clientes.\\n  " + source[end:]
+              source = source[:start] + "  // Alta de pacientes deshabilitada: el único módulo autorizado es Registro de clientes.\n  " + source[end:]
               path.write_text(source, encoding="utf-8")
           if "from('patients').insert(payload)" in source or 'from("patients").insert(payload)' in source:
               raise SystemExit("Administración conserva una ruta de INSERT de pacientes; se cancela la compilación.")
