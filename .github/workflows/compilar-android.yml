@@ -721,9 +721,8 @@ jobs:
           if "loginFormEarly.addEventListener('submit'" not in source or old in source: raise SystemExit("No se pudo blindar el manejador de acceso")
           js.write_text(source,encoding="utf-8")
           page=html.read_text(encoding="utf-8")
-          import re
-          page=re.sub(r'(app\\.js\\?v=)[^"\\']+',r'\\g<1>1.1.2',page)
-          page=re.sub(r'(styles\\.css\\?v=)[^"\\']+',r'\\g<1>1.1.2',page)
+          page=page.replace('app.js?v=1.0.6','app.js?v=1.1.2').replace('app.js?v=1.0.7','app.js?v=1.1.2').replace('app.js?v=1.0.8','app.js?v=1.1.2').replace('app.js?v=1.0.9','app.js?v=1.1.2')
+          page=page.replace('styles.css?v=1.0.6','styles.css?v=1.1.2').replace('styles.css?v=1.0.7','styles.css?v=1.1.2').replace('styles.css?v=1.0.8','styles.css?v=1.1.2').replace('styles.css?v=1.0.9','styles.css?v=1.1.2')
           page=page.replace('<button class="primary">Entrar</button>','<button class="primary" type="submit">Entrar</button>')
           html.write_text(page,encoding="utf-8")
           print("El submit queda registrado antes de la inicialización del resto del módulo y los errores se muestran en pantalla.")
