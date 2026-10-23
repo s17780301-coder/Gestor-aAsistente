@@ -388,7 +388,46 @@ jobs:
           html = html.replace('<span class="brand-name">DENTAL JG</span>', '')
           html = html.replace('<span class="logo-text">DENTAL JG</span>', '')
           panel.write_text(html, encoding="utf-8")
+
+          # Cobranza tampoco debe repetir la marca al lado del logotipo.
+          cobranza = root / "cobranza-app/src/main/assets/index.html"
+          html = cobranza.read_text(encoding="utf-8")
+          html = html.replace("Cobranza DENTAL JG", "Cobranza")
+          if "Cobranza DENTAL JG" in html or '<b>Cobranza</b>' not in html:
+              raise SystemExit("No se pudo corregir el encabezado del módulo Cobranza.")
+          cobranza.write_text(html, encoding="utf-8")
+          print("Logotipo de Cobranza sin texto DENTAL JG duplicado.")
           print("No se insertará ningún botón 'Volver al panel' en los APK.")
+          PY
+
+      - name: Aplicar identidad turquesa común a Cobranza y Administración
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          root = Path(os.environ["ANDROID_PROJECT_DIR"])
+          cobranza = root / "cobranza-app/src/main/assets/styles.css"
+          admin = root / "panel-apk/src/main/assets/styles.css"
+          if not cobranza.is_file() or not admin.is_file():
+              raise SystemExit("Falta styles.css de Cobranza o Administración.")
+
+          cobranza_skin = "\\n/* DENTAL JG shared turquoise skin */\\n:root{--navy:#087f78;--teal:#19b9b0;--blue:#087f78;--bg:#f2f9f8;--text:#17343a;--muted:#617d83;--line:#d7eeeb}\\n.login{background:linear-gradient(140deg,#073b3a,#0d7771 58%,#28b7a7)!important}\\nheader{background:linear-gradient(105deg,#073b3a,#0d7771 65%,#19b9b0)!important}\\nh1,.metrics strong{color:#087f78}\\n.primary,.ghost:hover{background:linear-gradient(120deg,#19b9b0,#087f78)!important;color:#fff!important}\\n"
+          admin_skin = "\\n/* DENTAL JG shared turquoise skin */\\n:root{--navy:#087f78;--navy2:#073b3a;--teal:#19b9b0;--blue:#087f78;--ink:#17343a;--muted:#708686;--bg:#f2f9f8;--line:#d7eeeb}\\n.sidebar{background:linear-gradient(180deg,#073b3a,#0d7771 72%,#087f78)!important}\\n.primary,.welcome,.topbar{background:linear-gradient(115deg,#073b3a,#0d7771 65%,#19b9b0)!important}\\n.brand-intro{background:linear-gradient(145deg,#073b3a,#0d7771 58%,#28b7a7)!important}\\n.nav.active{background:linear-gradient(120deg,#0d7771,#087f78)!important;box-shadow:inset 3px 0 #72e5dc!important}\\n.money,.patient-name-link{color:#087f78!important}\\n@media(prefers-color-scheme:dark){:root{--ink:#e7f3f1;--muted:#a5c3bf;--bg:#101d20;--line:#294442;--white:#172a2d}.app,.login-shell{background:#101d20;color:#e7f3f1}.metric,.table-card,.clinic-form-card,.patient-dialog-card,.user-chip{background:#172a2d;color:#e7f3f1;border-color:#294442}.topbar .user-chip{background:#172a2d;color:#e7f3f1}.patient-form input,.search,.stack input,.clinic-form-row input,.clinic-form-row select{background:#102124;color:#e7f3f1;border-color:#294442}th{background:#1b3033;color:#b5d4d0}td{color:#d7e9e6;border-color:#294442}}\\n"
+
+          for path, marker, skin in [
+              (cobranza, "DENTAL JG shared turquoise skin", cobranza_skin),
+              (admin, "DENTAL JG shared turquoise skin", admin_skin),
+          ]:
+              current = path.read_text(encoding="utf-8")
+              if marker not in current:
+                  path.write_text(current.rstrip() + skin, encoding="utf-8")
+              if marker not in path.read_text(encoding="utf-8"):
+                  raise SystemExit(f"No se pudo aplicar el tema compartido a {path}.")
+              print(f"Tema turquesa aplicado a {path.relative_to(root)}")
           PY
 
       - name: Aceptar licencias e instalar plataformas necesarias
@@ -535,27 +574,30 @@ jobs:
             echo "OK firma estable compartida: $cert"
           done
 
-      - name: Reunir APKs
+      - name: Reunir APKs con nombres claros y versión verificada
         if: steps.project.outputs.mode == 'source'
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/apks"
-          while IFS= read -r -d '' apk; do
-            rel="${apk#"$ANDROID_PROJECT_DIR"/}"
-            module="${rel%%/*}"
-            cp -v "$apk" "$GITHUB_WORKSPACE/apks/${module}-$(basename "$apk")"
-          done < <(find "$ANDROID_PROJECT_DIR" -type f -path '*/build/outputs/apk/*/*.apk' -print0)
-          if [[ -z "$(find "$GITHUB_WORKSPACE/apks" -type f -name '*.apk' -print -quit)" ]]; then
-            echo "::error::Gradle terminó pero no se encontró ningún APK generado."
-            exit 1
-          fi
+          declare -A OUTPUT_NAME
+          OUTPUT_NAME[gestor-app]="DENTAL_JG_Gestor_1.0.7.apk"
+          OUTPUT_NAME[panel-apk]="DENTAL_JG_Administracion_1.0.7.apk"
+          OUTPUT_NAME[cobranza-app]="DENTAL_JG_Cobranza_1.0.7.apk"
+          OUTPUT_NAME[registro-app]="DENTAL_JG_Registro_Clientes_1.0.7.apk"
+          for module in gestor-app panel-apk cobranza-app registro-app; do
+            apk="$(find "$ANDROID_PROJECT_DIR/$module/build/outputs/apk/debug" -maxdepth 1 -type f -name '*.apk' -print -quit)"
+            [[ -n "$apk" ]] || { echo "::error::No existe APK final para $module."; exit 1; }
+            cp -v "$apk" "$GITHUB_WORKSPACE/apks/${OUTPUT_NAME[$module]}"
+          done
+          count="$(find "$GITHUB_WORKSPACE/apks" -maxdepth 1 -type f -name '*.apk' | wc -l)"
+          [[ "$count" == "4" ]] || { echo "::error::Se esperaban 4 APKs y se reunieron $count."; exit 1; }
           ls -lh "$GITHUB_WORKSPACE/apks"
 
       - name: Guardar APKs como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: DENTAL-JG-APKs-debug
+          name: DENTAL-JG-APKs-1.0.7-verified
           path: apks/*.apk
           if-no-files-found: error
           retention-days: 14
