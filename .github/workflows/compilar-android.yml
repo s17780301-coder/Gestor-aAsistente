@@ -403,25 +403,25 @@ jobs:
           styles = css.read_text(encoding="utf-8")
           styles = styles.replace('styles.css?v=1.0.7', 'styles.css?v=1.0.9')
           styles = styles.rstrip() + """
-/* Formulario Registro 1.0.9: secciones claras y adaptación móvil */
-.form{display:grid;grid-template-columns:1fr;gap:18px}
-.form-section{min-width:0;border:1px solid #dcebe9;border-radius:18px;background:linear-gradient(180deg,#ffffff 0%,#fbfefe 100%);padding:20px}
-.section-heading{display:flex;align-items:center;gap:12px;padding-bottom:15px;margin-bottom:16px;border-bottom:1px solid #e4efee}
-.section-step{display:flex;align-items:center;justify-content:center;flex:0 0 38px;height:38px;border-radius:12px;background:#dff7f3;color:#087f78;font-weight:900}
-.section-heading h3{font-size:18px;line-height:1.25;margin:0;color:#173b40}
-.section-heading p{font-size:13px;margin:4px 0 0;color:#667e82}
-.section-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.section-grid label{min-width:0;font-size:13px;color:#24464b}
-.section-grid input,.section-grid select,.section-grid textarea{width:100%;min-width:0;border:1px solid #d2e2e0;border-radius:11px;padding:12px 13px;font:inherit;font-weight:500;background:#fcfefe;color:#173b40}
-.section-grid select{appearance:auto}
-.section-grid textarea{resize:vertical;min-height:82px}
-.section-grid input:focus,.section-grid select:focus,.section-grid textarea:focus{outline:3px solid #19b9b02b;border-color:#19b9b0}
-.section-grid input[readonly]{background:#eff7f6;color:#557276}
-.field-span-2{grid-column:span 2}
-.form-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px}
-.form-actions button{width:100%;min-height:48px}
-.form .form-actions{grid-column:1/-1}
-@media(max-width:650px){.form-section{padding:15px;border-radius:15px}.section-grid{grid-template-columns:1fr;gap:13px}.field-span-2{grid-column:auto}.form-actions{grid-template-columns:1fr}.section-heading h3{font-size:17px}.section-heading p{font-size:12px}}
+          /* Formulario Registro 1.0.9: secciones claras y adaptación móvil */
+          .form{display:grid;grid-template-columns:1fr;gap:18px}
+          .form-section{min-width:0;border:1px solid #dcebe9;border-radius:18px;background:linear-gradient(180deg,#ffffff 0%,#fbfefe 100%);padding:20px}
+          .section-heading{display:flex;align-items:center;gap:12px;padding-bottom:15px;margin-bottom:16px;border-bottom:1px solid #e4efee}
+          .section-step{display:flex;align-items:center;justify-content:center;flex:0 0 38px;height:38px;border-radius:12px;background:#dff7f3;color:#087f78;font-weight:900}
+          .section-heading h3{font-size:18px;line-height:1.25;margin:0;color:#173b40}
+          .section-heading p{font-size:13px;margin:4px 0 0;color:#667e82}
+          .section-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+          .section-grid label{min-width:0;font-size:13px;color:#24464b}
+          .section-grid input,.section-grid select,.section-grid textarea{width:100%;min-width:0;border:1px solid #d2e2e0;border-radius:11px;padding:12px 13px;font:inherit;font-weight:500;background:#fcfefe;color:#173b40}
+          .section-grid select{appearance:auto}
+          .section-grid textarea{resize:vertical;min-height:82px}
+          .section-grid input:focus,.section-grid select:focus,.section-grid textarea:focus{outline:3px solid #19b9b02b;border-color:#19b9b0}
+          .section-grid input[readonly]{background:#eff7f6;color:#557276}
+          .field-span-2{grid-column:span 2}
+          .form-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px}
+          .form-actions button{width:100%;min-height:48px}
+          .form .form-actions{grid-column:1/-1}
+          @media(max-width:650px){.form-section{padding:15px;border-radius:15px}.section-grid{grid-template-columns:1fr;gap:13px}.field-span-2{grid-column:auto}.form-actions{grid-template-columns:1fr}.section-heading h3{font-size:17px}.section-heading p{font-size:12px}}
 """
           css.write_text(styles, encoding="utf-8")
           print("Formulario Registro actualizado y validado.")
