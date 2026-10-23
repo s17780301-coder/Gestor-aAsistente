@@ -48,40 +48,38 @@ jobs:
           echo "$RUNNER_TEMP/gradle-8.9/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/gradle-8.9/bin/gradle" --version
 
-      - name: Validar y extraer exclusivamente la fuente de reparación 1.0.7
+      - name: Reconstruir y verificar la fuente exacta de reparación 1.0.7
         id: project
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/dental_extract" "$GITHUB_WORKSPACE/apks"
-          SOURCE_ZIP="$GITHUB_WORKSPACE/DENTAL_JG_APLICACIONES_REPARACION_ACCESO_1_0_7.zip"
-          if [[ ! -s "$SOURCE_ZIP" ]]; then
-            echo "::error::No se compila: falta DENTAL_JG_APLICACIONES_REPARACION_ACCESO_1_0_7.zip. El repositorio contiene una fuente 1.0.6 que produjo la ejecución 54; no se permite usarla como sustituta."
-            echo "ZIP disponibles:"
-            find "$GITHUB_WORKSPACE" -maxdepth 2 -type f -iname '*.zip' -printf '%P\n' || true
+          BASE_ZIP="$GITHUB_WORKSPACE/DENTAL_JG_1_0_6_APPS_WEB_SQL_ACTUALIZADO.zip"
+          SOURCE_PATCH="$GITHUB_WORKSPACE/patches/DENTAL_JG_REPARACION_ACCESO_1_0_7.patch"
+          SOURCE_MANIFEST="$GITHUB_WORKSPACE/patches/DENTAL_JG_REPARACION_ACCESO_1_0_7.sha256"
+          [[ -s "$BASE_ZIP" ]] || { echo "::error::Falta el ZIP base exacto DENTAL_JG_1_0_6_APPS_WEB_SQL_ACTUALIZADO.zip."; exit 1; }
+          [[ -s "$SOURCE_PATCH" && -s "$SOURCE_MANIFEST" ]] || { echo "::error::Falta el parche o manifiesto de reparación 1.0.7."; exit 1; }
+          ACTUAL_SHA="$(sha256sum "$BASE_ZIP" | awk '{print $1}')"
+          EXPECTED_SHA="816f8ddf7de2d76eebc302e42a0b3e800b72f69597139b3d43a5d5758d56e402"
+          if [[ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]]; then
+            echo "::error::El ZIP base no coincide con la copia comparada y verificada. No se compila."
             exit 1
           fi
-          unzip -tq "$SOURCE_ZIP"
-          TARGET="$RUNNER_TEMP/dental_extract/reparacion_1_0_7"
+          unzip -tq "$BASE_ZIP"
+          TARGET="$RUNNER_TEMP/dental_extract/DENTAL_JG_REPARACION_ACCESO_1_0_7"
           mkdir -p "$TARGET"
-          unzip -oq "$SOURCE_ZIP" -d "$TARGET"
-          ROOT=""
-          while IFS= read -r -d '' settings; do
-            candidate="$(dirname "$settings")"
-            valid=true
-            for module in gestor-app panel-apk cobranza-app registro-app; do
-              if [[ ! -f "$candidate/$module/build.gradle" && ! -f "$candidate/$module/build.gradle.kts" ]]; then valid=false; break; fi
-              if [[ ! -f "$candidate/$module/src/main/AndroidManifest.xml" ]]; then valid=false; break; fi
-            done
-            if [[ "$valid" == true ]]; then ROOT="$candidate"; break; fi
-          done < <(find "$TARGET" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print0)
-          if [[ -z "$ROOT" ]]; then
-            echo "::error::El ZIP de reparación no contiene un proyecto Gradle verificable con los cuatro módulos Android."
-            find "$TARGET" -type f \( -name settings.gradle -o -name settings.gradle.kts -o -name AndroidManifest.xml \) -printf '%P\n' | head -100 || true
-            exit 1
-          fi
-          echo "Fuente autorizada: DENTAL_JG_APLICACIONES_REPARACION_ACCESO_1_0_7.zip"
-          echo "Proyecto Gradle: $ROOT"
+          unzip -oq "$BASE_ZIP" -d "$TARGET"
+          ROOT="$TARGET/djg"
+          [[ -f "$ROOT/settings.gradle" || -f "$ROOT/settings.gradle.kts" ]] || { echo "::error::No existe settings.gradle en el proyecto fuente."; exit 1; }
+          for module in gestor-app panel-apk cobranza-app registro-app; do
+            [[ -f "$ROOT/$module/src/main/AndroidManifest.xml" ]] || { echo "::error::Falta AndroidManifest.xml de $module."; exit 1; }
+            [[ -f "$ROOT/$module/build.gradle" || -f "$ROOT/$module/build.gradle.kts" ]] || { echo "::error::Falta configuración Gradle de $module."; exit 1; }
+          done
+          echo "Base ZIP SHA-256 validado: $ACTUAL_SHA"
+          echo "Aplicando diferencias extraídas por comparación directa con el ZIP de reparación 1.0.7."
+          patch --batch --forward -p1 -d "$ROOT" < "$SOURCE_PATCH"
+          (cd "$ROOT" && sha256sum -c "$SOURCE_MANIFEST")
+          echo "Fuente 1.0.7 reconstruida: las 44 huellas coinciden con el ZIP de reparación; el HTML de Registro se valida en el siguiente paso de coherencia del formulario."
           echo "ANDROID_PROJECT_DIR=$ROOT" >> "$GITHUB_ENV"
           echo "mode=source" >> "$GITHUB_OUTPUT"
 
