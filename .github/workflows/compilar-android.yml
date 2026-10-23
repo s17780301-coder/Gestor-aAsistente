@@ -48,50 +48,41 @@ jobs:
           echo "$RUNNER_TEMP/gradle-8.9/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/gradle-8.9/bin/gradle" --version
 
-      - name: Encontrar proyecto fuente o APKs ya compilados
+      - name: Validar y extraer exclusivamente la fuente de reparación 1.0.7
         id: project
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/dental_extract" "$GITHUB_WORKSPACE/apks"
-          FOUND=""
-          # Prioriza el ZIP de corrección más reciente y no recompila una versión antigua
-          # si el archivo objetivo contiene el proyecto Gradle.
-          while IFS= read -r -d '' archive; do
-            if ! unzip -tq "$archive" >/dev/null 2>&1; then
-              echo "::warning::Se omite ZIP dañado: $archive"
-              continue
-            fi
-            target="$RUNNER_TEMP/dental_extract/$(basename "$archive" .zip)"
-            mkdir -p "$target"
-            unzip -oq "$archive" -d "$target"
-            candidate="$(find "$target" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)"
-            if [[ -n "$candidate" ]]; then
-              root="$(dirname "$candidate")"
-              if [[ -f "$root/gradle.properties" || -f "$root/build.gradle" || -f "$root/build.gradle.kts" ]]; then
-                FOUND="$root"
-                echo "Proyecto Gradle encontrado en ZIP: $(basename "$archive")"
-                echo "Proyecto Gradle en: $FOUND"
-                break
-              fi
-            fi
-          done < <(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -iname '*.zip' -print0 | sort -z -r)
-
-          if [[ -z "$FOUND" ]]; then
-            while IFS= read -r -d '' apk; do
-              cp -n "$apk" "$GITHUB_WORKSPACE/apks/$(basename "$apk")"
-            done < <(find "$RUNNER_TEMP/dental_extract" -type f -iname '*.apk' -print0)
-            if [[ -n "$(find "$GITHUB_WORKSPACE/apks" -type f -iname '*.apk' -print -quit)" ]]; then
-              echo "::notice::El ZIP contiene APKs ya compilados; no se recompilaron."
-              echo "mode=apks" >> "$GITHUB_OUTPUT"
-              ls -lh "$GITHUB_WORKSPACE/apks"
-              exit 0
-            fi
-            echo "::error::No se encontró proyecto Gradle ni APK dentro de los ZIP del repositorio."
-            find "$GITHUB_WORKSPACE" -maxdepth 2 -type f -printf '%P\n' | head -100 || true
+          SOURCE_ZIP="$GITHUB_WORKSPACE/DENTAL_JG_APLICACIONES_REPARACION_ACCESO_1_0_7.zip"
+          if [[ ! -s "$SOURCE_ZIP" ]]; then
+            echo "::error::No se compila: falta DENTAL_JG_APLICACIONES_REPARACION_ACCESO_1_0_7.zip. El repositorio contiene una fuente 1.0.6 que produjo la ejecución 54; no se permite usarla como sustituta."
+            echo "ZIP disponibles:"
+            find "$GITHUB_WORKSPACE" -maxdepth 2 -type f -iname '*.zip' -printf '%P\n' || true
             exit 1
           fi
-          echo "ANDROID_PROJECT_DIR=$FOUND" >> "$GITHUB_ENV"
+          unzip -tq "$SOURCE_ZIP"
+          TARGET="$RUNNER_TEMP/dental_extract/reparacion_1_0_7"
+          mkdir -p "$TARGET"
+          unzip -oq "$SOURCE_ZIP" -d "$TARGET"
+          ROOT=""
+          while IFS= read -r -d '' settings; do
+            candidate="$(dirname "$settings")"
+            valid=true
+            for module in gestor-app panel-apk cobranza-app registro-app; do
+              if [[ ! -f "$candidate/$module/build.gradle" && ! -f "$candidate/$module/build.gradle.kts" ]]; then valid=false; break; fi
+              if [[ ! -f "$candidate/$module/src/main/AndroidManifest.xml" ]]; then valid=false; break; fi
+            done
+            if [[ "$valid" == true ]]; then ROOT="$candidate"; break; fi
+          done < <(find "$TARGET" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print0)
+          if [[ -z "$ROOT" ]]; then
+            echo "::error::El ZIP de reparación no contiene un proyecto Gradle verificable con los cuatro módulos Android."
+            find "$TARGET" -type f \( -name settings.gradle -o -name settings.gradle.kts -o -name AndroidManifest.xml \) -printf '%P\n' | head -100 || true
+            exit 1
+          fi
+          echo "Fuente autorizada: DENTAL_JG_APLICACIONES_REPARACION_ACCESO_1_0_7.zip"
+          echo "Proyecto Gradle: $ROOT"
+          echo "ANDROID_PROJECT_DIR=$ROOT" >> "$GITHUB_ENV"
           echo "mode=source" >> "$GITHUB_OUTPUT"
 
       - name: Unificar el estilo del botón Registro de roles en Admon
