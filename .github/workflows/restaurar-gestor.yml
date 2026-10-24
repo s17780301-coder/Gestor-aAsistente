@@ -1,0 +1,167 @@
+name: Restaurar y verificar solo Gestor DENTAL JG
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restaurar-gestor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gestor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+      - name: Preparar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK y Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o "$RUNNER_TEMP/gradle.zip"
+          unzip -q "$RUNNER_TEMP/gradle.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gradle-8.9/bin" >> "$GITHUB_PATH"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then SDKMANAGER="$SDK_ROOT/cmdline-tools/16.0/bin/sdkmanager"; fi
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Reconstruir fuente base validada
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_ZIP="$GITHUB_WORKSPACE/DENTAL_JG_1_0_6_APPS_WEB_SQL_ACTUALIZADO.zip"
+          PATCH="$GITHUB_WORKSPACE/patches/DENTAL_JG_REPARACION_ACCESO_1_0_7.patch"
+          MANIFEST="$GITHUB_WORKSPACE/patches/DENTAL_JG_REPARACION_ACCESO_1_0_7.sha256"
+          test -s "$BASE_ZIP" && test -s "$PATCH" && test -s "$MANIFEST"
+          ACTUAL_SHA="$(sha256sum "$BASE_ZIP" | awk '{print $1}')"
+          EXPECTED_SHA="816f8ddf7de2d76eebc302e42a0b3e800b72f69597139b3d43a5d5758d56e402"
+          [[ "$ACTUAL_SHA" == "$EXPECTED_SHA" ]] || { echo "::error::ZIP base no coincide con la fuente verificada."; exit 1; }
+          [[ "$(grep -c '^--- a/' "$PATCH")" == "44" ]] || { echo "::error::Parche base incompleto."; exit 1; }
+          mkdir -p "$RUNNER_TEMP/djg"
+          unzip -oq "$BASE_ZIP" -d "$RUNNER_TEMP/djg"
+          ROOT="$RUNNER_TEMP/djg/djg"
+          patch --batch --forward -p1 -d "$ROOT" < "$PATCH"
+          (cd "$ROOT" && sha256sum -c "$MANIFEST")
+          echo "ROOT=$ROOT" >> "$GITHUB_ENV"
+      - name: Corregir únicamente la navegación Reportes de Gestor
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          root=Path(os.environ["ROOT"])
+          layout=root/"gestor-app/src/main/res/layout/activity_main.xml"
+          java=root/"gestor-app/src/main/java/com/example/gestoriaasistente/MainActivity.java"
+          xml=layout.read_text(encoding="utf-8")
+          src=java.read_text(encoding="utf-8")
+          # Eliminar el botón redundante; conservar la tarjeta principal Reportes.
+          xml2=re.sub(r'^[ \t]*<Button[^>]*android:id="@\+id/btnReports"[^>]*/>\s*\n?', '', xml, flags=re.M)
+          if xml2==xml and 'btnReports' in xml:
+              raise SystemExit("No se pudo identificar el botón redundante Reportes de forma segura.")
+          if 'android:id="@+id/tileReports"' not in xml2 or 'Reportes' not in xml2:
+              raise SystemExit("La tarjeta principal Reportes no está presente; se cancela el cambio.")
+          xml2=xml2.replace('android:id="@+id/tileReports"', 'android:id="@+id/tileReports"', 1)
+          src2=src.replace('        findViewById(R.id.btnReports).setOnClickListener(v->showReports());\n','')
+          src2=src2.replace('R.id.btnPatients,R.id.btnReports,R.id.btnSettings', 'R.id.btnPatients,R.id.btnSettings')
+          if 'R.id.btnReports' in src2:
+              # Eliminar la referencia del arreglo de botones de estilo si permanece.
+              src2=src2.replace('R.id.btnReports,','')
+          # Blindar la apertura del reporte contra excepciones de interfaz/datos para que no cierre la app.
+          signature='    private void showReports() {'
+          wrapper='''    private void showReports() {
+          try {
+              showReportsSafely();
+          } catch (RuntimeException ex) {
+              android.util.Log.e("DENTAL_JG_GESTOR", "No se pudo abrir Reportes", ex);
+              Toast.makeText(this, "No se pudo abrir Reportes. Revisa la conexión y vuelve a intentarlo.", Toast.LENGTH_LONG).show();
+          }
+          }
+
+          private void showReportsSafely() {'''
+          if 'private void showReportsSafely()' not in src2:
+              if src2.count(signature)!=1:
+                  raise SystemExit("No se encontró un único método showReports para proteger.")
+              src2=src2.replace(signature,wrapper,1)
+          if 'findViewById(R.id.btnReports)' in src2 or 'R.id.btnReports' in src2:
+              raise SystemExit("Quedaron referencias a btnReports en Java.")
+          if 'private void showReportsSafely()' not in src2 or 'private void showReports()' not in src2:
+              raise SystemExit("Falló la validación del manejador Reportes.")
+          layout.write_text(xml2,encoding="utf-8")
+          java.write_text(src2,encoding="utf-8")
+          print("OK: tarjeta Reportes conservada; botón redundante eliminado; excepción de apertura contenida.")
+          PY
+      - name: Preparar versión y firma estable solo para Gestor
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          root=Path(os.environ["ROOT"])
+          gradle=root/"gestor-app/build.gradle"
+          s=gradle.read_text()
+          m=re.search(r'\bversionCode\s+(\d+)',s)
+          if not m: raise SystemExit("No se encontró versionCode de Gestor.")
+          s=s[:m.start(1)]+str(max(1015,int(m.group(1))))+s[m.end(1):]
+          if not re.search(r'\bstableDebug\s*\{',s):
+              s += """
+          android {
+              signingConfigs {
+                  stableDebug {
+                      storeFile rootProject.file('panel-apk/dentaljg-debug.keystore')
+                      storePassword 'dentaljg-debug'
+                      keyAlias 'dentaljg-debug'
+                      keyPassword 'dentaljg-debug'
+                  }
+              }
+              buildTypes { debug { signingConfig signingConfigs.stableDebug } }
+          }
+          """
+          gradle.write_text(s)
+          key=root/"panel-apk/dentaljg-debug.keystore"
+          if not key.is_file(): raise SystemExit("No se encontró la clave de firma estable.")
+          PY
+      - name: Compilar solo Gestor
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$ROOT"
+          gradle --no-daemon --stacktrace :gestor-app:assembleDebug
+      - name: Verificar APK Gestor
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          APK="$(find "$ROOT/gestor-app/build/outputs/apk/debug" -maxdepth 1 -name '*.apk' -print -quit)"
+          test -s "$APK"
+          "$SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/signature.txt"
+          META="$("$SDK_ROOT/build-tools/35.0.0/aapt" dump badging "$APK" | sed -n '1p')"
+          grep -F "name='com.example.gestoriaasistente'" <<< "$META"
+          grep -F "versionCode='1015'" <<< "$META"
+          CERT="$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}' "$RUNNER_TEMP/signature.txt" | tr -d ':')"
+          [[ "$CERT" == "c3ea80a5b17f24e7677ea49be5b176b8196b306c35fd8249d8c8fc507338efef" ]] || { cat "$RUNNER_TEMP/signature.txt"; exit 1; }
+          XMLTREE="$("$SDK_ROOT/build-tools/35.0.0/aapt" dump xmltree "$APK" res/layout/activity_main.xml)"
+          ! grep -Fq "btnReports" <<< "$XMLTREE"
+          grep -Fq "Reportes" <<< "$XMLTREE"
+          mkdir -p "$GITHUB_WORKSPACE/apk"
+          cp "$APK" "$GITHUB_WORKSPACE/apk/DENTAL_JG_Gestor_1.0.apk"
+          sha256sum "$GITHUB_WORKSPACE/apk/DENTAL_JG_Gestor_1.0.apk"
+          echo "APK Gestor verificado: paquete, versionCode, firma estable y tarjeta Reportes."
+      - name: Publicar únicamente APK Gestor
+        uses: actions/upload-artifact@v4
+        with:
+          name: DENTAL-JG-Gestor-restaurado
+          path: apk/DENTAL_JG_Gestor_1.0.apk
+          if-no-files-found: error
+          retention-days: 14
