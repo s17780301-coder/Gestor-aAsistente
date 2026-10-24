@@ -202,7 +202,7 @@ old_payments = '''    public Cursor payments(long patientId) { return getReadabl
 '''
 new_payments = '''    public Cursor payments(long patientId) { return getReadableDatabase().rawQuery("SELECT monto,fecha,nota FROM pagos WHERE paciente_id=? ORDER BY fecha DESC",new String[]{String.valueOf(patientId)}); }
     public Cursor selectablePatients(String period, boolean pendingOnly) {
-        String sql = "SELECT p.id,p.nombre,p.telefono,p.tratamiento,p.total,p.pagado,MAX(p.total-p.pagado,0) saldo,p.quincenas,p.pago_quincenal,p.numero_poliza,p.clinica,p.payment_method,CASE WHEN q.paciente_id IS NULL THEN 0 ELSE 1 END AS period_paid " +
+        String sql = "SELECT p.id,p.nombre,p.telefono,p.tratamiento,p.total,p.pagado,MAX(p.total-p.pagado,0) saldo,p.quincenas,p.pago_quincenal,p.numero_poliza,p.clinica,p.payment_method,CASE WHEN q.paciente_id IS NULL THEN 0 ELSE 1 END AS period_paid,COALESCE(p.address,'') address " +
                 "FROM pacientes p LEFT JOIN quincenas_pagadas q ON q.paciente_id=p.id AND q.periodo=? ";
         if (pendingOnly) sql += "WHERE q.paciente_id IS NULL AND p.total>p.pagado ";
         sql += "ORDER BY p.nombre COLLATE NOCASE";
@@ -256,15 +256,15 @@ new_choose_patient = '''    private void choosePatient(String title, PatientActi
     }
 
     private static final class PatientChoice {
-        final long id; final String name, phone, treatment, policy, clinic;
+        final long id; final String name, phone, treatment, policy, clinic, address;
         final double total, paid, balance, installment; final boolean periodPaid;
         PatientChoice(long id, String name, String phone, String treatment, double total, double paid,
-                      double balance, double installment, String policy, String clinic, boolean periodPaid) {
+                      double balance, double installment, String policy, String clinic, boolean periodPaid, String address) {
             this.id=id; this.name=name; this.phone=phone; this.treatment=treatment; this.total=total;
             this.paid=paid; this.balance=balance; this.installment=installment; this.policy=policy;
-            this.clinic=clinic; this.periodPaid=periodPaid;
+            this.clinic=clinic; this.periodPaid=periodPaid; this.address=address == null ? "" : address;
         }
-        String searchable() { return name+" "+phone+" "+treatment+" "+policy+" "+clinic; }
+        String searchable() { return name+" "+phone+" "+treatment+" "+policy+" "+clinic+" "+address; }
     }
 
     private void showPatientSelector(String title, boolean pendingOnly, PatientAction action) {
@@ -273,7 +273,7 @@ new_choose_patient = '''    private void choosePatient(String title, PatientActi
         try {
             while (c.moveToNext()) choices.add(new PatientChoice(c.getLong(0), c.getString(1), c.getString(2),
                     c.getString(3), c.getDouble(4), c.getDouble(5), c.getDouble(6), c.getDouble(8),
-                    c.getString(9), c.getString(10), c.getInt(12) != 0));
+                    c.getString(9), c.getString(10), c.getInt(12) != 0, c.getString(13)));
         } finally { c.close(); }
         if (choices.isEmpty()) {
             String message = pendingOnly ? "No hay clientes pendientes para esta quincena. Los clientes ya pagados no aparecen en esta lista." : "Todavía no hay clientes sincronizados en este dispositivo. Conecta Supabase y actualiza los datos.";
@@ -286,7 +286,7 @@ new_choose_patient = '''    private void choosePatient(String title, PatientActi
         TextView intro = txt(pendingOnly ? choices.size()+" clientes pendientes · toca una tarjeta para registrar el abono" : choices.size()+" clientes · busca por nombre, teléfono, póliza o clínica",
                 12, dark ? Color.rgb(190,211,226) : muted, false);
         intro.setPadding(dp(2), dp(4), dp(2), dp(8)); box.addView(intro);
-        EditText search = field(box, "Buscar nombre, teléfono, póliza o clínica…", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        EditText search = field(box, "Buscar nombre, teléfono, póliza, clínica o dirección…", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         search.setSingleLine(true);
         android.widget.ListView list = new android.widget.ListView(this); list.setDivider(null); list.setDividerHeight(dp(8));
         PatientChoiceAdapter adapter = new PatientChoiceAdapter(choices); list.setAdapter(adapter);
@@ -328,6 +328,10 @@ new_choose_patient = '''    private void choosePatient(String title, PatientActi
             String details = (p.clinic == null || p.clinic.trim().isEmpty() ? "Sin clínica" : p.clinic.trim())
                     + "  ·  Póliza: " + (p.policy == null || p.policy.trim().isEmpty() ? "Sin póliza" : p.policy.trim());
             TextView meta = txt(details, 12, dark ? Color.rgb(190,211,226) : muted, false); meta.setPadding(0,dp(3),0,0); card.addView(meta);
+            String address = p.address == null ? "" : p.address.trim();
+            TextView addressLine = txt(address.isEmpty() ? "⚠ Domicilio no registrado" : "📍 " + address, 12,
+                    address.isEmpty() ? Color.rgb(205,117,69) : (dark ? Color.rgb(190,211,226) : Color.rgb(66,91,113)), false);
+            addressLine.setPadding(0, dp(3), 0, 0); card.addView(addressLine);
             String contact = (p.phone == null || p.phone.trim().isEmpty() ? "Sin teléfono" : p.phone.trim())
                     + (p.treatment == null || p.treatment.trim().isEmpty() ? "" : "  ·  " + p.treatment.trim());
             TextView contactLine = txt(contact, 12, dark ? Color.rgb(190,211,226) : Color.rgb(66,91,113), false); contactLine.setPadding(0,dp(2),0,0); card.addView(contactLine);
@@ -340,6 +344,17 @@ new_choose_patient = '''    private void choosePatient(String title, PatientActi
             actions.setOrientation(android.widget.LinearLayout.HORIZONTAL);
             actions.setGravity(android.view.Gravity.END);
             actions.setPadding(0, dp(9), 0, 0);
+            android.widget.Button maps = new android.widget.Button(MainActivity.this);
+            maps.setText("Cómo llegar"); maps.setTextSize(12); maps.setMinHeight(dp(40)); maps.setMinimumHeight(dp(40)); maps.setFocusable(false);
+            maps.setOnClickListener(v -> {
+                String destination = p.address == null ? "" : p.address.trim();
+                if (destination.isEmpty()) { toast("Este cliente no tiene domicilio registrado. Completa la dirección desde Registro de clientes."); return; }
+                try {
+                    String uri = "https://www.google.com/maps/dir/?api=1&destination=" + android.net.Uri.encode(destination) + "&travelmode=driving";
+                    startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri)));
+                } catch (Exception ex) { toast("No se pudo abrir Google Maps."); }
+            });
+            actions.addView(maps);
             android.widget.Button call = new android.widget.Button(MainActivity.this);
             call.setText("Llamar");
             call.setTextSize(12);
