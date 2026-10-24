@@ -774,7 +774,33 @@ jobs:
           print("OK Cobranza: gestor derivado del registro; carteras automáticas; recibos adicionales programados sin registrar pagos.")
           PY
 
-      # Gestor se restaura al código original del ZIP base; no aplicar el parche experimental de sesión/historial.
+      # Aplicar únicamente las correcciones de Gestor: sesión, selector y reportes reales.
+      - name: Aplicar reparación de sesión e historial de Gestor
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 patches/gestor-session-history-ui.py "$ANDROID_PROJECT_DIR"
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+          root = Path(os.environ["ANDROID_PROJECT_DIR"])
+          layout = root / "gestor-app/src/main/res/layout/activity_main.xml"
+          xml = layout.read_text(encoding="utf-8")
+          # Remove only the redundant standalone report button; preserve the Reportes card.
+          xml2 = re.sub(r'(?s)<(?:Button|androidx\\.appcompat\\.widget\\.AppCompatButton)\\b(?:(?!</(?:Button|androidx\\.appcompat\\.widget\\.AppCompatButton)>).)*?(?:android:id=["\']@\\+id/btnReports["\']|android:text=["\']Ver reporte de cobranza["\'])(?:(?!</(?:Button|androidx\\.appcompat\\.widget\\.AppCompatButton)>).)*?</(?:Button|androidx\\.appcompat\\.widget\\.AppCompatButton)>', '', xml, count=1)
+          if xml2 == xml and ('btnReports' in xml or 'Ver reporte de cobranza' in xml):
+              raise SystemExit("No se pudo quitar el botón redundante de reportes sin alterar otros controles.")
+          layout.write_text(xml2, encoding="utf-8")
+          gradle = root / "gestor-app/build.gradle"
+          source = gradle.read_text(encoding="utf-8")
+          source, n = re.subn(r'(\\bversionCode\\s+)1014\\b', r'\\g<1>1015', source, count=1)
+          if n: gradle.write_text(source, encoding="utf-8")
+          print("Gestor: reparación aplicada; historial nube/local integrado y botón redundante eliminado.")
+          PY
+          grep -q 'showReceiptHistory()' "$ANDROID_PROJECT_DIR/gestor-app/src/main/java/com/example/gestoriaasistente/MainActivity.java"
+          grep -q 'fetchAccessibleReceiptHistory()' "$ANDROID_PROJECT_DIR/gestor-app/src/main/java/com/example/gestoriaasistente/SupabaseSync.java"
+
       - name: Compilar todos los módulos Android
         if: steps.project.outputs.mode == 'source'
         shell: bash
