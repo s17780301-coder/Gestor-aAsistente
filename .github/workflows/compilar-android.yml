@@ -649,7 +649,7 @@ jobs:
           # Usar versionCodes claramente superiores a los de las compilaciones anteriores
           # para evitar que Android rechace la actualización como downgrade.
           version_updates = {
-              'gestor-app': (19, 1009),
+              'gestor-app': (19, 1010),
               'panel-apk': (9, 1007),
               'cobranza-app': (5, 2003),
               'registro-app': (5, 1007),
@@ -783,6 +783,50 @@ jobs:
           MAIN="$ANDROID_PROJECT_DIR/gestor-app/src/main/java/com/example/gestoriaasistente/MainActivity.java"
           SYNC="$ANDROID_PROJECT_DIR/gestor-app/src/main/java/com/example/gestoriaasistente/SupabaseSync.java"
           DB="$ANDROID_PROJECT_DIR/gestor-app/src/main/java/com/example/gestoriaasistente/CustomerDbHelper.java"
+          LAYOUT="$ANDROID_PROJECT_DIR/gestor-app/src/main/res/layout/activity_main.xml"
+          # Retirar únicamente el botón independiente duplicado. La tarjeta "Reportes"
+          # y showReports() se conservan: otras funciones no deben cambiar.
+          python3 - "$MAIN" "$LAYOUT" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          main_path, layout_path = map(Path, sys.argv[1:3])
+          main = main_path.read_text(encoding="utf-8")
+          layout = layout_path.read_text(encoding="utf-8")
+
+          button_pattern = re.compile(
+              r'(?m)^[ \t]*<Button\b(?=[^>\n]*android:id="@\+id/btnReports")[^>\n]*/>[ \t]*(?:\r?\n|$)'
+          )
+          layout, removed = button_pattern.subn("", layout, count=1)
+          if removed != 1:
+              raise SystemExit("No se encontró exactamente el botón redundante btnReports; se cancela el build.")
+
+          listener = "        findViewById(R.id.btnReports).setOnClickListener(v->showReports());\n"
+          if main.count(listener) != 1:
+              raise SystemExit("La llamada del botón redundante btnReports no coincide con lo esperado; se cancela el build.")
+          main = main.replace(listener, "", 1)
+
+          button_ids = "int[] buttonIds={R.id.tilePatients,R.id.tileCollections,R.id.tileWhatsApp,R.id.tileReports};"
+          if button_ids not in main:
+              # El botón oculto btnPatients está en la lista de botones; quitar solo btnReports.
+              old_ids = "int[] buttonIds={R.id.btnPatients,R.id.btnReports,R.id.btnSettings,R.id.btnReminders,R.id.btnHeaderSettings};"
+              if main.count(old_ids) != 1:
+                  raise SystemExit("La lista de botones de tema no coincide con lo esperado; se cancela el build.")
+              main = main.replace(old_ids,
+                  "int[] buttonIds={R.id.btnPatients,R.id.btnSettings,R.id.btnReminders,R.id.btnHeaderSettings};", 1)
+
+          if "android:id=\"@+id/btnReports\"" in layout or "R.id.btnReports" in main:
+              raise SystemExit("Quedó una referencia activa a btnReports; se cancela el build.")
+          if ("android:id=\"@+id/tileReports\"" not in layout
+                  or "findViewById(R.id.tileReports).setOnClickListener(v->showReports());" not in main
+                  or "private void showReports()" not in main):
+              raise SystemExit("La tarjeta Reportes debe conservarse intacta; se cancela el build.")
+
+          layout_path.write_text(layout, encoding="utf-8")
+          main_path.write_text(main, encoding="utf-8")
+          print('OK Gestor: quitado solo "Ver reporte de cobranza"; la tarjeta "Reportes" se mantiene.')
+          PY
           grep -q 'ensureFreshAccessToken' "$SYNC"
           grep -q 'grant_type=refresh_token' "$SYNC"
           grep -q 'fetchAccessibleReceiptHistory' "$SYNC"
@@ -791,6 +835,10 @@ jobs:
           grep -q 'class PaymentHistoryAdapter' "$MAIN"
           grep -q 'sumRecordedPayments' "$DB"
           ! grep -q 'TextToSpeech\|brandTts' "$MAIN"
+          ! grep -q 'btnReports' "$LAYOUT"
+          ! grep -q 'R.id.btnReports' "$MAIN"
+          grep -q 'tileReports' "$LAYOUT"
+          grep -q 'R.id.tileReports' "$MAIN"
           echo "OK Gestor: sesión renovable, buscador de clientes, históricos reales y voz de inicio retirada."
           
       - name: Compilar todos los módulos Android
