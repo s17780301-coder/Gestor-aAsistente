@@ -99,16 +99,7 @@ new_login = '''    private SharedPreferences sessionPrefs() { return context.get
         String manager = managerId();
         String path = "/rest/v1/collection_receipts?select=id,folio,patient_name,clinic,payment_amount,net_amount,concept,notes,created_at,manager_id&order=created_at.desc&limit=1000";
         if (!manager.isEmpty()) path += "&manager_id=eq." + manager;
-        org.json.JSONArray rows;
-        try {
-            rows = requestArray("GET", path, null, ensureFreshAccessToken(false), null);
-        } catch (Exception first) {
-            String message = first.getMessage() == null ? "" : first.getMessage();
-            // Compatibilidad con esquemas anteriores donde aún no existía manager_id.
-            if (!message.contains("manager_id") && !message.contains("PGRST204") && !message.contains("42703")) throw first;
-            String fallback = "/rest/v1/collection_receipts?select=id,folio,patient_name,clinic,payment_amount,net_amount,concept,notes,created_at&order=created_at.desc&limit=1000";
-            rows = requestArray("GET", fallback, null, ensureFreshAccessToken(false), null);
-        }
+        org.json.JSONArray rows = requestArray("GET", path, null, ensureFreshAccessToken(false), null);
         sessionPrefs().edit().putString(receiptCacheKey(), rows.toString()).putLong(receiptCacheKey() + "_at", System.currentTimeMillis()).apply();
         return rows;
     }
@@ -345,6 +336,40 @@ new_choose_patient = '''    private void choosePatient(String title, PatientActi
             TextView status = txt(p.periodPaid ? "✓ Quincena cubierta" : "• Pendiente esta quincena", 11,
                     p.periodPaid ? Color.rgb(22,150,105) : (dark ? Color.rgb(91,224,218) : Color.rgb(12,139,145)), true);
             status.setPadding(0,dp(2),0,0); card.addView(status);
+            android.widget.LinearLayout actions = new android.widget.LinearLayout(MainActivity.this);
+            actions.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+            actions.setGravity(android.view.Gravity.END);
+            actions.setPadding(0, dp(9), 0, 0);
+            android.widget.Button call = new android.widget.Button(MainActivity.this);
+            call.setText("Llamar");
+            call.setTextSize(12);
+            call.setMinHeight(dp(40));
+            call.setMinimumHeight(dp(40));
+            call.setFocusable(false);
+            call.setOnClickListener(v -> {
+                String phone = p.phone == null ? "" : p.phone.trim();
+                if (phone.isEmpty()) { toast("Este cliente no tiene teléfono registrado."); return; }
+                try { startActivity(new android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + phone))); }
+                catch (Exception ex) { toast("No se pudo abrir la aplicación de llamadas."); }
+            });
+            android.widget.Button whatsapp = new android.widget.Button(MainActivity.this);
+            whatsapp.setText("WhatsApp");
+            whatsapp.setTextSize(12);
+            whatsapp.setMinHeight(dp(40));
+            whatsapp.setMinimumHeight(dp(40));
+            whatsapp.setFocusable(false);
+            whatsapp.setOnClickListener(v -> {
+                String phone = p.phone == null ? "" : p.phone.replaceAll("[^0-9]", "");
+                if (phone.isEmpty()) { toast("Este cliente no tiene teléfono registrado."); return; }
+                if (phone.length() == 10) phone = "52" + phone;
+                try { startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://wa.me/" + phone))); }
+                catch (Exception ex) { toast("No se pudo abrir WhatsApp."); }
+            });
+            android.widget.LinearLayout.LayoutParams actionParams = new android.widget.LinearLayout.LayoutParams(-2, -2);
+            actionParams.setMargins(dp(4), 0, dp(4), 0);
+            actions.addView(call, actionParams);
+            actions.addView(whatsapp, actionParams);
+            card.addView(actions);
             return card;
         }
     }
@@ -407,9 +432,9 @@ new_reports = '''    private static final class ReceiptHistoryItem {
         android.widget.ListView list = new android.widget.ListView(this); list.setDivider(null); list.setDividerHeight(dp(8));
         TextView empty = txt("No hay registros para mostrar.",14,muted,false); empty.setGravity(android.view.Gravity.CENTER); empty.setPadding(dp(10),dp(20),dp(10),dp(20));
         root.addView(list,new android.widget.LinearLayout.LayoutParams(-1,Math.min(dp(300),(int)(getResources().getDisplayMetrics().heightPixels*.34f)))); root.addView(empty); list.setEmptyView(empty);
-        Button reload = miniButton("Actualizar recibos de Cobranza"); root.addView(reload);
+        Button reload = miniButton("Actualizar histórico desde Supabase"); root.addView(reload);
         ReceiptHistoryAdapter receiptAdapter = new ReceiptHistoryAdapter(receipts); PaymentHistoryAdapter paymentAdapter = new PaymentHistoryAdapter(payments);
-        final boolean[] receiptsSelected = {false};
+        final boolean[] receiptsSelected = {true};
         Runnable applyTab = () -> {
             receiptsTab.setTextColor(receiptsSelected[0] ? Color.WHITE : (dark ? Color.WHITE : Color.rgb(17,110,121)));
             receiptsTab.setBackgroundTintList(android.content.res.ColorStateList.valueOf(receiptsSelected[0] ? Color.rgb(12,139,145) : (dark ? Color.rgb(31,53,74) : Color.rgb(224,242,242))));
@@ -435,9 +460,9 @@ new_reports = '''    private static final class ReceiptHistoryItem {
             public void afterTextChanged(android.text.Editable e){}
         });
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Reporte de cobranza · histórico").setView(root).setNegativeButton("Cerrar",null).create();
-        reload.setOnClickListener(v->loadReceiptHistory(receiptAdapter,status,receiptsSelected));
+        reload.setOnClickListener(v->loadReceiptHistory(receiptAdapter,status));
         dialog.setOnShowListener(v->styleDialog(dialog)); dialog.show(); styleDialog(dialog); applyTab.run();
-        loadReceiptHistory(receiptAdapter,status,receiptsSelected);
+        loadReceiptHistory(receiptAdapter,status);
     }
 
     private java.util.ArrayList<PaymentHistoryItem> readPaymentHistory() {
@@ -452,15 +477,15 @@ new_reports = '''    private static final class ReceiptHistoryItem {
         return rows;
     }
 
-    private void loadReceiptHistory(ReceiptHistoryAdapter adapter, TextView status, boolean[] receiptsSelected) {
-        if(!cloud.connected()){if(receiptsSelected[0])status.setText("Sin sesión de Supabase. Se conserva la caché disponible; conecta la cuenta en Ajustes para actualizar recibos.");return;}
-        if(receiptsSelected[0])status.setText("Consultando recibos de Cobranza con los permisos de la cuenta…");
+    private void loadReceiptHistory(ReceiptHistoryAdapter adapter, TextView status) {
+        if(!cloud.connected()){status.setText("Sin sesión de Supabase. Se conserva la caché disponible; conecta la cuenta en Ajustes para actualizar recibos.");return;}
+        status.setText("Consultando recibos de Cobranza con los permisos de la cuenta…");
         new Thread(()->{
             String error=null; java.util.ArrayList<ReceiptHistoryItem> rows=new java.util.ArrayList<>();
             try { org.json.JSONArray data=cloud.fetchAccessibleReceiptHistory(); for(int i=0;i<data.length();i++){org.json.JSONObject r=data.optJSONObject(i);if(r==null)continue;rows.add(new ReceiptHistoryItem(r.optString("folio","(sin folio)"),r.optString("patient_name","Paciente"),r.optString("clinic",""),r.optString("concept","Abono"),r.optString("notes",""),r.optString("created_at",""),r.optDouble("payment_amount",0),r.optDouble("net_amount",r.optDouble("payment_amount",0))));} }
             catch(Exception ex){error=ex.getMessage()==null?"No se pudo consultar el historial.":ex.getMessage();}
             final String result=error; final java.util.ArrayList<ReceiptHistoryItem> loaded=rows;
-            runOnUiThread(()->{if(isFinishing())return;if(result==null){adapter.setItems(loaded);if(receiptsSelected[0])status.setText(loaded.size()+" recibos accesibles desde Supabase · actualizado "+formatTimestamp(System.currentTimeMillis()));}else if(receiptsSelected[0]){status.setText("No se pudieron actualizar los recibos: "+result+". Se conserva la información disponible en caché.");}});
+            runOnUiThread(()->{if(isFinishing())return;if(result==null){adapter.setItems(loaded);status.setText(loaded.size()+" recibos accesibles desde Supabase · actualizado "+formatTimestamp(System.currentTimeMillis()));}else{status.setText("No se pudieron actualizar los recibos: "+result+". Se conserva la información disponible en caché.");}});
         }).start();
     }
 
@@ -499,7 +524,7 @@ main = main.replace(old_reports, new_reports, 1)
 # Confirm no startup speech remains, and make sure the new paths are wired in.
 if 'TextToSpeech' in main or 'brandTts' in main:
     raise SystemExit("Quedó una referencia a la voz de inicio; se cancela la compilación.")
-for marker in ('showPatientSelector(', 'class ReceiptHistoryAdapter', 'class PaymentHistoryAdapter', 'loadReceiptHistory(', 'db.sumRecordedPayments()'):
+for marker in ('showPatientSelector(', 'class ReceiptHistoryAdapter', 'class PaymentHistoryAdapter', 'loadReceiptHistory(', 'db.sumRecordedPayments()', 'ACTION_DIAL', 'https://wa.me/'):
     if marker not in main:
         raise SystemExit("No se encontró la mejora requerida en MainActivity.java: " + marker)
 if 'public Cursor selectablePatients(' not in db or 'public Cursor allPayments()' not in db:
