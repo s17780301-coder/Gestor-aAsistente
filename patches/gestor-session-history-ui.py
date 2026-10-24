@@ -253,6 +253,233 @@ if "private boolean hasColumn(SQLiteDatabase db, String table, String column)" n
 '''
     if marker not in db: raise SystemExit("No se encontró onUpgrade para añadir comprobación segura de columnas.")
     db = db.replace(marker, helper + marker, 1)
+
+# Older installations can contain partially migrated schemas from previous
+# builds. Make every remaining ALTER TABLE ADD COLUMN in onUpgrade idempotent,
+# not just the two newest columns, so upgrading never crashes on duplicate columns.
+alter_pattern = re.compile(
+    r'(?m)^(\\s*)if \\(oldVersion < (\\d+)\\) db\\.execSQL\\("ALTER TABLE ([A-Za-z_][A-Za-z0-9_]*) ADD COLUMN ([A-Za-z_][A-Za-z0-9_]*) ([^"\\n]*)"\\);
+    marker = 'v.put("numero_poliza", p.optString("policy_number", "")); v.put("clinica", p.optString("clinic", ""));'
+    if marker not in db:
+        raise SystemExit("No se encontró el upsert remoto de pacientes para address; se cancela.")
+    db = db.replace(marker, marker + ' v.put("address", p.optString("address", ""));', 1)
+db_path.write_text(db, encoding="utf-8")
+
+# ---------------------------------------------------------------------------
+# 3) Replace the plain AlertDialog client-picker with a searchable, recycled
+#    card list. Both receipt entry and WhatsApp use the same list component.
+# ---------------------------------------------------------------------------
+old_refresh = '    private void refresh(){if(collectedValue!=null){collectedValue.setText(money(db.sumQuincenal()));pendingValue.setText(money(db.sumPaid()));patientCount.setText(String.valueOf(db.count()));}}'
+new_refresh = '    private void refresh(){if(collectedValue!=null){collectedValue.setText(money(db.sumQuincenal()));pendingValue.setText(money(db.sumRecordedPayments()));patientCount.setText(String.valueOf(db.count()));}}'
+if old_refresh not in main:
+    raise SystemExit("No se encontró refresh() esperado; no se modificó la fuente.")
+main = main.replace(old_refresh, new_refresh, 1)
+main = main.replace('    private android.speech.tts.TextToSpeech brandTts;\n', '', 1)
+# Keep the splash/visual intro and its short notification tone; remove only speech.
+tts_pattern = re.compile(r'\s*try \{ brandTts = new android\.speech\.tts\.TextToSpeech\(this, status -> \{.*?\}\); \} catch\(Exception ignored\) \{\}', re.DOTALL)
+main, tts_count = tts_pattern.subn('', main, count=1)
+if tts_count != 1:
+    raise SystemExit("No se encontró el bloque de voz de inicio de Gestor; no se modificó la fuente.")
+main = main.replace('if(brandTts!=null){brandTts.stop();brandTts.shutdown();brandTts=null;}', '', 1)
+
+old_payment_picker = '''    private void choosePatientForPayment(){String period=currentPeriod();Cursor c=db.pendingFortnight(period);java.util.ArrayList<Long> ids=new java.util.ArrayList<>();java.util.ArrayList<String> names=new java.util.ArrayList<>();java.util.ArrayList<Double> balances=new java.util.ArrayList<>();java.util.ArrayList<String> labels=new java.util.ArrayList<>();while(c.moveToNext()){ids.add(c.getLong(0));names.add(c.getString(1));balances.add(c.getDouble(4));labels.add(c.getString(1)+" · pago quincenal "+money(c.getDouble(3))+" · pendiente "+money(c.getDouble(4)));}c.close();if(labels.isEmpty()){new AlertDialog.Builder(this).setTitle("Cobranza de esta quincena").setMessage("No hay pacientes pendientes para esta quincena. ¡Todo al corriente!").setPositiveButton("Aceptar",null).show();return;}new AlertDialog.Builder(this).setTitle("Pendientes: "+currentPeriodLabel()).setItems(labels.toArray(new String[0]),(d,w)->addPayment(ids.get(w),names.get(w),balances.get(w))).setNegativeButton("Cerrar",null).show();}
+'''
+new_payment_picker = '''    private void choosePatientForPayment(){
+        showPatientSelector("Ingresar recibos · " + currentPeriodLabel(), true,
+                (id, name, phone, balance) -> addPayment(id, name, balance));
+    }
+'''
+if old_payment_picker not in main:
+    raise SystemExit("No se encontró el selector de pago esperado en MainActivity.java; no se modificó la fuente.")
+main = main.replace(old_payment_picker, new_payment_picker, 1)
+
+old_choose_patient = '''    private void choosePatient(String title,PatientAction action){Cursor c=db.all();java.util.ArrayList<Long> ids=new java.util.ArrayList<>();java.util.ArrayList<String> labels=new java.util.ArrayList<>();java.util.ArrayList<String> names=new java.util.ArrayList<>();java.util.ArrayList<String> phones=new java.util.ArrayList<>();java.util.ArrayList<Double> balances=new java.util.ArrayList<>();while(c.moveToNext()){ids.add(c.getLong(0));names.add(c.getString(1));phones.add(c.getString(2));balances.add(c.getDouble(6));labels.add(c.getString(1)+" · pendiente "+money(c.getDouble(6)));}c.close();if(labels.isEmpty()){toast("Primero registra un paciente.");return;}new AlertDialog.Builder(this).setTitle(title).setItems(labels.toArray(new String[0]),(d,which)->action.run(ids.get(which),names.get(which),phones.get(which),balances.get(which))).setNegativeButton("Cancelar",null).show();}
+'''
+new_choose_patient = '''    private void choosePatient(String title, PatientAction action) {
+        showPatientSelector(title, false, action);
+    }
+
+    private static final class PatientChoice {
+        final long id; final String name, phone, treatment, policy, clinic, address;
+        final double total, paid, balance, installment; final boolean periodPaid;
+        PatientChoice(long id, String name, String phone, String treatment, double total, double paid,
+                      double balance, double installment, String policy, String clinic, boolean periodPaid, String address) {
+            this.id=id; this.name=name; this.phone=phone; this.treatment=treatment; this.total=total;
+            this.paid=paid; this.balance=balance; this.installment=installment; this.policy=policy;
+            this.clinic=clinic; this.periodPaid=periodPaid; this.address=address == null ? "" : address;
+        }
+        String searchable() { return name+" "+phone+" "+treatment+" "+policy+" "+clinic+" "+address; }
+    }
+
+    private void showPatientSelector(String title, boolean pendingOnly, PatientAction action) {
+        java.util.ArrayList<PatientChoice> choices = new java.util.ArrayList<>();
+        Cursor c = db.selectablePatients(currentPeriod(), pendingOnly);
+        try {
+            while (c.moveToNext()) choices.add(new PatientChoice(c.getLong(0), c.getString(1), c.getString(2),
+                    c.getString(3), c.getDouble(4), c.getDouble(5), c.getDouble(6), c.getDouble(8),
+                    c.getString(9), c.getString(10), c.getInt(12) != 0, c.getString(13)));
+        } finally { c.close(); }
+        if (choices.isEmpty()) {
+            String message = pendingOnly ? "No hay clientes pendientes para esta quincena. Los clientes ya pagados no aparecen en esta lista." : "Todavía no hay clientes sincronizados en este dispositivo. Conecta Supabase y actualiza los datos.";
+            new AlertDialog.Builder(this).setTitle(pendingOnly ? "Todo al corriente" : "Lista de clientes")
+                    .setMessage(message).setPositiveButton("Aceptar", null).show();
+            return;
+        }
+        LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(12), dp(5), dp(12), dp(8));
+        TextView intro = txt(pendingOnly ? choices.size()+" clientes pendientes · toca una tarjeta para registrar el abono" : choices.size()+" clientes · busca por nombre, teléfono, póliza o clínica",
+                12, dark ? Color.rgb(190,211,226) : muted, false);
+        intro.setPadding(dp(2), dp(4), dp(2), dp(8)); box.addView(intro);
+        EditText search = field(box, "Buscar nombre, teléfono, póliza, clínica o dirección…", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        search.setSingleLine(true);
+        android.widget.ListView list = new android.widget.ListView(this); list.setDivider(null); list.setDividerHeight(dp(8));
+        PatientChoiceAdapter adapter = new PatientChoiceAdapter(choices); list.setAdapter(adapter);
+        TextView empty = txt("No hay coincidencias. Prueba otra búsqueda.", 14, muted, false); empty.setGravity(android.view.Gravity.CENTER); empty.setPadding(dp(10),dp(20),dp(10),dp(20));
+        android.widget.LinearLayout.LayoutParams listParams = new android.widget.LinearLayout.LayoutParams(-1, Math.min(dp(360), (int)(getResources().getDisplayMetrics().heightPixels * .43f)));
+        box.addView(list, listParams); box.addView(empty); list.setEmptyView(empty);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(title).setView(box).setNegativeButton("Cerrar", null).create();
+        list.setOnItemClickListener((parent, view, position, itemId) -> {
+            PatientChoice selected = adapter.getItem(position);
+            dialog.dismiss(); action.run(selected.id, selected.name, selected.phone, selected.balance);
+        });
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            public void beforeTextChanged(CharSequence s,int start,int count,int after) { }
+            public void onTextChanged(CharSequence s,int start,int before,int count) { adapter.filter(s == null ? "" : s.toString()); intro.setText(adapter.getCount()+" de "+choices.size()+" clientes · toca una tarjeta para continuar"); }
+            public void afterTextChanged(android.text.Editable e) { }
+        });
+        dialog.setOnShowListener(v -> styleDialog(dialog)); dialog.show(); styleDialog(dialog);
+    }
+
+    private final class PatientChoiceAdapter extends android.widget.BaseAdapter {
+        private final java.util.ArrayList<PatientChoice> all = new java.util.ArrayList<>();
+        private final java.util.ArrayList<PatientChoice> shown = new java.util.ArrayList<>();
+        PatientChoiceAdapter(java.util.List<PatientChoice> rows) { all.addAll(rows); shown.addAll(rows); }
+        void filter(String query) {
+            String q = normalizeSearch(query); shown.clear();
+            for (PatientChoice p : all) if (q.isEmpty() || normalizeSearch(p.searchable()).contains(q)) shown.add(p);
+            notifyDataSetChanged();
+        }
+        public int getCount() { return shown.size(); }
+        public PatientChoice getItem(int position) { return shown.get(position); }
+        public long getItemId(int position) { return shown.get(position).id; }
+        public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
+            PatientChoice p = getItem(position);
+            LinearLayout card = new LinearLayout(MainActivity.this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(14),dp(12),dp(14),dp(12));
+            android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable(); shape.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            shape.setCornerRadius(dp(15)); shape.setColor(dark ? Color.rgb(26,43,62) : Color.rgb(248,251,253));
+            shape.setStroke(dp(1), dark ? Color.rgb(57,79,100) : Color.rgb(220,230,238)); card.setBackground(shape);
+            TextView name = txt(p.name, 16, dark ? Color.WHITE : ink, true); card.addView(name);
+            String details = (p.clinic == null || p.clinic.trim().isEmpty() ? "Sin clínica" : p.clinic.trim())
+                    + "  ·  Póliza: " + (p.policy == null || p.policy.trim().isEmpty() ? "Sin póliza" : p.policy.trim());
+            TextView meta = txt(details, 12, dark ? Color.rgb(190,211,226) : muted, false); meta.setPadding(0,dp(3),0,0); card.addView(meta);
+            String address = p.address == null ? "" : p.address.trim();
+            TextView addressLine = txt(address.isEmpty() ? "⚠ Domicilio no registrado" : "📍 " + address, 12,
+                    address.isEmpty() ? Color.rgb(205,117,69) : (dark ? Color.rgb(190,211,226) : Color.rgb(66,91,113)), false);
+            addressLine.setPadding(0, dp(3), 0, 0); card.addView(addressLine);
+            String contact = (p.phone == null || p.phone.trim().isEmpty() ? "Sin teléfono" : p.phone.trim())
+                    + (p.treatment == null || p.treatment.trim().isEmpty() ? "" : "  ·  " + p.treatment.trim());
+            TextView contactLine = txt(contact, 12, dark ? Color.rgb(190,211,226) : Color.rgb(66,91,113), false); contactLine.setPadding(0,dp(2),0,0); card.addView(contactLine);
+            TextView moneyLine = txt("Pago quincenal: " + money(p.installment) + "   ·   Saldo: " + money(p.balance), 13,
+                    p.balance > 0 ? Color.rgb(205,117,69) : Color.rgb(22,150,105), true); moneyLine.setPadding(0,dp(6),0,0); card.addView(moneyLine);
+            TextView status = txt(p.periodPaid ? "✓ Quincena cubierta" : "• Pendiente esta quincena", 11,
+                    p.periodPaid ? Color.rgb(22,150,105) : (dark ? Color.rgb(91,224,218) : Color.rgb(12,139,145)), true);
+            status.setPadding(0,dp(2),0,0); card.addView(status);
+            android.widget.LinearLayout actions = new android.widget.LinearLayout(MainActivity.this);
+            actions.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+            actions.setGravity(android.view.Gravity.END);
+            actions.setPadding(0, dp(9), 0, 0);
+            android.widget.Button maps = new android.widget.Button(MainActivity.this);
+            maps.setText("Cómo llegar"); maps.setTextSize(12); maps.setMinHeight(dp(40)); maps.setMinimumHeight(dp(40)); maps.setFocusable(false);
+            maps.setOnClickListener(v -> {
+                String destination = p.address == null ? "" : p.address.trim();
+                if (destination.isEmpty()) { toast("Este cliente no tiene domicilio registrado. Completa la dirección desde Registro de clientes."); return; }
+                try {
+                    String uri = "https://www.google.com/maps/dir/?api=1&destination=" + android.net.Uri.encode(destination) + "&travelmode=driving";
+                    startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri)));
+                } catch (Exception ex) { toast("No se pudo abrir Google Maps."); }
+            });
+            actions.addView(maps);
+            android.widget.Button call = new android.widget.Button(MainActivity.this);
+            call.setText("Llamar");
+            call.setTextSize(12);
+            call.setMinHeight(dp(40));
+            call.setMinimumHeight(dp(40));
+            call.setFocusable(false);
+            call.setOnClickListener(v -> {
+                String phone = p.phone == null ? "" : p.phone.trim();
+                if (phone.isEmpty()) { toast("Este cliente no tiene teléfono registrado."); return; }
+                try { startActivity(new android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + phone))); }
+                catch (Exception ex) { toast("No se pudo abrir la aplicación de llamadas."); }
+            });
+            android.widget.Button whatsapp = new android.widget.Button(MainActivity.this);
+            whatsapp.setText("WhatsApp");
+            whatsapp.setTextSize(12);
+            whatsapp.setMinHeight(dp(40));
+            whatsapp.setMinimumHeight(dp(40));
+            whatsapp.setFocusable(false);
+            whatsapp.setOnClickListener(v -> {
+                String phone = p.phone == null ? "" : p.phone.replaceAll("[^0-9]", "");
+                if (phone.isEmpty()) { toast("Este cliente no tiene teléfono registrado."); return; }
+                if (phone.length() == 10) phone = "52" + phone;
+                try { startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://wa.me/" + phone))); }
+                catch (Exception ex) { toast("No se pudo abrir WhatsApp."); }
+            });
+            android.widget.LinearLayout.LayoutParams actionParams = new android.widget.LinearLayout.LayoutParams(-2, -2);
+            actionParams.setMargins(dp(4), 0, dp(4), 0);
+            actions.addView(call, actionParams);
+            actions.addView(whatsapp, actionParams);
+            card.addView(actions);
+            return card;
+        }
+    }
+
+    private String normalizeSearch(String value) {
+        String normalized = java.text.Normalizer.normalize(value == null ? "" : value, java.text.Normalizer.Form.NFD);
+        StringBuilder clean = new StringBuilder(normalized.length());
+        for (int i = 0; i < normalized.length(); i++) {
+            char ch = normalized.charAt(i); int type = Character.getType(ch);
+            if (type != Character.NON_SPACING_MARK && type != Character.COMBINING_SPACING_MARK && type != Character.ENCLOSING_MARK) clean.append(ch);
+        }
+        return clean.toString().toLowerCase(new Locale("es", "MX")).trim();
+    }
+'''
+if old_choose_patient not in main:
+    raise SystemExit("No se encontró el selector general esperado en MainActivity.java; no se modificó la fuente.")
+main = main.replace(old_choose_patient, new_choose_patient, 1)
+
+# ---------------------------------------------------------------------------
+# 4) Replace the misleading client-only report with real receipt history from
+#    collection_receipts (only rows permitted by Supabase RLS) plus a separate
+#    tab for the locally cached/shared payments history.
+# ---------------------------------------------------------------------------
+old_reports = '''    private void showReports(){Cursor c=db.all();StringBuilder s=new StringBuilder("Resumen de cobranza\\n\\nTotal cobrado: ").append(money(db.sumQuincenal())).append("\\nPagos registrados: ").append(money(db.sumPaid())).append("\\nPacientes registrados: ").append(db.count()).append("\\n\\nCuentas pendientes:\\n");int n=0;while(c.moveToNext()){double balance=c.getDouble(6);if(balance>0){n++;s.append("• ").append(c.getString(1)).append(" — ").append(money(balance)).append("; pago quincenal ").append(money(c.getDouble(8))).append("\\n");}}c.close();if(n==0)s.append("No hay saldos pendientes.");new AlertDialog.Builder(this).setTitle("Reporte de cobranza").setMessage(s.toString()).setPositiveButton("Cerrar",null).show();}
+'''
+new_reports = '''    private void showReports(){Cursor c=db.all();StringBuilder s=new StringBuilder("Resumen de cobranza\\n\\nTotal cobrado: ").append(money(db.sumQuincenal())).append("\\nPagos registrados: ").append(money(db.sumPaid())).append("\\nPacientes registrados: ").append(db.count()).append("\\n\\nCuentas pendientes:\\n");int n=0;while(c.moveToNext()){double balance=c.getDouble(6);if(balance>0){n++;s.append("• ").append(c.getString(1)).append(" — ").append(money(balance)).append("; pago quincenal ").append(money(c.getDouble(8))).append("\\n");}}c.close();if(n==0)s.append("No hay saldos pendientes.");new AlertDialog.Builder(this).setTitle("Reporte de cobranza").setMessage(s.toString()).setPositiveButton("Cerrar",null).show();}
+'''
+if old_reports not in main:
+    raise SystemExit("No se encontró el reporte original esperado en MainActivity.java; no se modificó la fuente.")
+main = main.replace(old_reports, new_reports, 1)
+
+# Confirm no startup speech remains, and make sure the new paths are wired in.
+if 'TextToSpeech' in main or 'brandTts' in main:
+    raise SystemExit("Quedó una referencia a la voz de inicio; se cancela la compilación.")
+for marker in ('showPatientSelector(', 'private void showReports()', 'db.sumRecordedPayments()', 'ACTION_DIAL', 'https://wa.me/'):
+    if marker not in main:
+        raise SystemExit("No se encontró la mejora requerida en MainActivity.java: " + marker)
+if 'public Cursor selectablePatients(' not in db or 'public Cursor allPayments()' not in db:
+    raise SystemExit("Faltan consultas locales de pacientes o historial en CustomerDbHelper.java.")
+main_path.write_text(main, encoding="utf-8")
+
+print("Gestor: renovación de sesión, selector moderno con búsqueda, reporte nativo estable y voz de inicio eliminada.")
+)
+def guard_legacy_alter(match):
+    indent, version, table, column, definition = match.groups()
+    return (f'{indent}if (oldVersion < {version} && !hasColumn(db, "{table}", "{column}")) '
+            f'db.execSQL("ALTER TABLE {table} ADD COLUMN {column} {definition}");')
+db = alter_pattern.sub(guard_legacy_alter, db)
+if re.search(r'(?m)^\\s*if \\(oldVersion < \\d+\\) db\\.execSQL\\("ALTER TABLE', db):
+    raise SystemExit("Quedó una migración ALTER TABLE sin protección; se cancela.")
+
 if 'v.put("address", p.optString("address", ""));' not in db:
     marker = 'v.put("numero_poliza", p.optString("policy_number", "")); v.put("clinica", p.optString("clinic", ""));'
     if marker not in db:
