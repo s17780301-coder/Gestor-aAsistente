@@ -2,7 +2,7 @@ name: Compilar APKs DENTAL JG desde ZIP
 
 on:
   push:
-    branches: [main]
+    branches: [main, dental-jg-session-ui]
     paths:
       - '*.zip'
       - '**/*.zip'
@@ -774,6 +774,25 @@ jobs:
           print("OK Cobranza: gestor derivado del registro; carteras automáticas; recibos adicionales programados sin registrar pagos.")
           PY
 
+      - name: Aplicar correcciones acotadas de Gestor
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$GITHUB_WORKSPACE/patches/gestor-session-history-ui.py" "$ANDROID_PROJECT_DIR"
+          MAIN="$ANDROID_PROJECT_DIR/gestor-app/src/main/java/com/example/gestoriaasistente/MainActivity.java"
+          SYNC="$ANDROID_PROJECT_DIR/gestor-app/src/main/java/com/example/gestoriaasistente/SupabaseSync.java"
+          DB="$ANDROID_PROJECT_DIR/gestor-app/src/main/java/com/example/gestoriaasistente/CustomerDbHelper.java"
+          grep -q 'ensureFreshAccessToken' "$SYNC"
+          grep -q 'grant_type=refresh_token' "$SYNC"
+          grep -q 'fetchAccessibleReceiptHistory' "$SYNC"
+          grep -q 'showPatientSelector' "$MAIN"
+          grep -q 'class ReceiptHistoryAdapter' "$MAIN"
+          grep -q 'class PaymentHistoryAdapter' "$MAIN"
+          grep -q 'sumRecordedPayments' "$DB"
+          ! grep -q 'TextToSpeech\|brandTts' "$MAIN"
+          echo "OK Gestor: sesión renovable, buscador de clientes, históricos reales y voz de inicio retirada."
+          
       - name: Compilar todos los módulos Android
         if: steps.project.outputs.mode == 'source'
         shell: bash
