@@ -219,6 +219,21 @@ new_payments = '''    public Cursor payments(long patientId) { return getReadabl
 if old_payments not in db:
     raise SystemExit("No se encontró el método payments esperado en CustomerDbHelper.java; no se modificó la fuente.")
 db = db.replace(old_payments, new_payments, 1)
+# Add a local address column with a forward-only SQLite migration; preserve all existing patient data.
+if 'super(context, "dentaljg.db", null, 6)' in db:
+    db = db.replace('super(context, "dentaljg.db", null, 6)', 'super(context, "dentaljg.db", null, 7)', 1)
+if 'payment_method TEXT NOT NULL DEFAULT \'efectivo\')' in db:
+    db = db.replace('payment_method TEXT NOT NULL DEFAULT \'efectivo\')', 'payment_method TEXT NOT NULL DEFAULT \'efectivo\', address TEXT DEFAULT \'\')', 1)
+if 'if (oldVersion < 7) db.execSQL("ALTER TABLE pacientes ADD COLUMN address TEXT DEFAULT \'\'");' not in db:
+    marker = '        if (oldVersion < 6) db.execSQL("ALTER TABLE pacientes ADD COLUMN payment_method TEXT NOT NULL DEFAULT \'efectivo\'");'
+    if marker not in db:
+        raise SystemExit("No se encontró el punto de migración SQLite para address; se cancela.")
+    db = db.replace(marker, marker + '\n        if (oldVersion < 7) db.execSQL("ALTER TABLE pacientes ADD COLUMN address TEXT DEFAULT \'\'");', 1)
+if 'v.put("address", p.optString("address", ""));' not in db:
+    marker = 'v.put("numero_poliza", p.optString("policy_number", "")); v.put("clinica", p.optString("clinic", ""));'
+    if marker not in db:
+        raise SystemExit("No se encontró el upsert remoto de pacientes para address; se cancela.")
+    db = db.replace(marker, marker + ' v.put("address", p.optString("address", ""));', 1)
 db_path.write_text(db, encoding="utf-8")
 
 # ---------------------------------------------------------------------------
