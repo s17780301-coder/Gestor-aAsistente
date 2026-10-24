@@ -1,0 +1,131 @@
+name: Gestor DENTAL JG aislado - compilación verificada
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/gestor-aislado.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-gestor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Instalar herramientas
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o "$RUNNER_TEMP/gradle.zip"
+          unzip -q "$RUNNER_TEMP/gradle.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gradle-8.9/bin" >> "$GITHUB_PATH"
+          SM="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          [[ -x "$SM" ]] || SM="$SDK/cmdline-tools/16.0/bin/sdkmanager"
+          yes | "$SM" --sdk_root="$SDK" --licenses >/dev/null || true
+          "$SM" --sdk_root="$SDK" "platforms;android-35" "build-tools;35.0.0"
+      - name: Extraer y validar fuente
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="$GITHUB_WORKSPACE/DENTAL_JG_1_0_6_APPS_WEB_SQL_ACTUALIZADO.zip"
+          PATCH="$GITHUB_WORKSPACE/patches/DENTAL_JG_REPARACION_ACCESO_1_0_7.patch"
+          MANIFEST="$GITHUB_WORKSPACE/patches/DENTAL_JG_REPARACION_ACCESO_1_0_7.sha256"
+          test -s "$ZIP" && test -s "$PATCH" && test -s "$MANIFEST"
+          [[ "$(sha256sum "$ZIP" | awk '{print $1}')" == "816f8ddf7de2d76eebc302e42a0b3e800b72f69597139b3d43a5d5758d56e402" ]]
+          [[ "$(grep -c '^--- a/' "$PATCH")" == "44" ]]
+          mkdir -p "$RUNNER_TEMP/djg"
+          unzip -oq "$ZIP" -d "$RUNNER_TEMP/djg"
+          ROOT="$RUNNER_TEMP/djg/djg"
+          patch --batch --forward -p1 -d "$ROOT" < "$PATCH"
+          (cd "$ROOT" && sha256sum -c "$MANIFEST")
+          echo "ROOT=$ROOT" >> "$GITHUB_ENV"
+      - name: Corregir solo la entrada de Reportes en Gestor
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          root=Path(os.environ["ROOT"])
+          layout=root/"gestor-app/src/main/res/layout/activity_main.xml"
+          java=root/"gestor-app/src/main/java/com/example/gestoriaasistente/MainActivity.java"
+          if not layout.is_file() or not java.is_file(): raise SystemExit("Faltan archivos de Gestor.")
+          xml=layout.read_text(encoding="utf-8")
+          src=java.read_text(encoding="utf-8")
+          # Quitar exclusivamente el botón redundante; conservar la tarjeta Reportes.
+          updated=re.sub(r'^[ \t]*<Button[^>]*android:id="@\+id/btnReports"[^>]*/>\s*\n?', '', xml, flags=re.M)
+          if 'btnReports' in updated: raise SystemExit("Quedó una referencia btnReports en el XML.")
+          if 'tileReports' not in updated or 'Reportes' not in updated: raise SystemExit("La tarjeta Reportes no está presente.")
+          src=re.sub(r'^\s*findViewById\(R\.id\.btnReports\)\.setOnClickListener\([^\n]*\);\s*\n','',src,flags=re.M)
+          src=src.replace('R.id.btnPatients,R.id.btnReports,R.id.btnSettings','R.id.btnPatients,R.id.btnSettings')
+          src=src.replace('R.id.btnPatients, R.id.btnReports, R.id.btnSettings','R.id.btnPatients, R.id.btnSettings')
+          if 'R.id.btnReports' in src: raise SystemExit("Quedó una referencia Java a btnReports.")
+          # Verificar que la tarjeta sigue conectada a la acción de reportes.
+          if not re.search(r'tileReports.*setOnClickListener',src,re.S):
+              raise SystemExit("No se pudo verificar el evento de la tarjeta Reportes; se cancela el APK.")
+          layout.write_text(updated,encoding="utf-8")
+          java.write_text(src,encoding="utf-8")
+          gradle=root/"gestor-app/build.gradle"
+          g=gradle.read_text(encoding="utf-8")
+          m=re.search(r'\bversionCode\s+(\d+)',g)
+          if not m: raise SystemExit("No se encontró versionCode.")
+          g=g[:m.start(1)]+str(max(1015,int(m.group(1))))+g[m.end(1):]
+          if not re.search(r'\bstableDebug\s*\{',g):
+              g+="""
+          android {
+              signingConfigs {
+                  stableDebug {
+                      storeFile rootProject.file('panel-apk/dentaljg-debug.keystore')
+                      storePassword 'dentaljg-debug'
+                      keyAlias 'dentaljg-debug'
+                      keyPassword 'dentaljg-debug'
+                  }
+              }
+              buildTypes { debug { signingConfig signingConfigs.stableDebug } }
+          }
+          """
+          gradle.write_text(g)
+          if not (root/"panel-apk/dentaljg-debug.keystore").is_file(): raise SystemExit("No existe la clave de firma estable.")
+          print("Gestor: tarjeta Reportes conservada; botón duplicado retirado; versión mínima 1015.")
+          PY
+      - name: Compilar únicamente Gestor
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$ROOT"
+          gradle --no-daemon --stacktrace :gestor-app:assembleDebug
+      - name: Validar firma, paquete, versión y recurso compilado
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          APK="$(find "$ROOT/gestor-app/build/outputs/apk/debug" -maxdepth 1 -name '*.apk' -print -quit)"
+          test -s "$APK"
+          "$SDK/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/signature.txt"
+          META="$("$SDK/build-tools/35.0.0/aapt" dump badging "$APK" | sed -n '1p')"
+          grep -F "name='com.example.gestoriaasistente'" <<< "$META"
+          grep -F "versionCode='1015'" <<< "$META"
+          CERT="$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}' "$RUNNER_TEMP/signature.txt" | tr -d ':')"
+          [[ "$CERT" == "c3ea80a5b17f24e7677ea49be5b176b8196b306c35fd8249d8c8fc507338efef" ]] || { cat "$RUNNER_TEMP/signature.txt"; exit 1; }
+          XMLTREE="$("$SDK/build-tools/35.0.0/aapt" dump xmltree "$APK" res/layout/activity_main.xml)"
+          ! grep -Fq "btnReports" <<< "$XMLTREE"
+          grep -Fq "Reportes" <<< "$XMLTREE"
+          mkdir -p "$GITHUB_WORKSPACE/apk"
+          cp "$APK" "$GITHUB_WORKSPACE/apk/DENTAL_JG_Gestor_1.0.apk"
+          sha256sum "$GITHUB_WORKSPACE/apk/DENTAL_JG_Gestor_1.0.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DENTAL-JG-Gestor-aislado
+          path: apk/DENTAL_JG_Gestor_1.0.apk
+          if-no-files-found: error
+          retention-days: 14
