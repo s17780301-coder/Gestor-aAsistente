@@ -355,8 +355,8 @@ jobs:
           <section class="form-section form-section-wide">
             <div class="section-heading"><span class="section-step">02</span><div><h3>Datos del paciente</h3><p>Escribe los nombres completos, sin abreviaturas.</p></div></div>
             <div class="section-grid">
-              <label>Nombre completo del titular (nombres y apellidos) *<input id="holderName" maxlength="160" required placeholder="Nombre y apellidos del titular"></label>
-              <label>Nombre completo del paciente (nombres y apellidos) *<input id="patientFullName" maxlength="160" required autocomplete="name" placeholder="Nombre(s) y apellidos completos del paciente"></label>
+              <label>Nombre completo del titular (nombres y apellidos) *<input id="holderName" maxlength="160" required placeholder="Nombre y apellidos del titular" oninput="this.value=this.value.toLocaleLowerCase('es-MX').replace(/(^|[\s'-])([\p{L}])/gu, (m, sep, ch) => sep + ch.toLocaleUpperCase('es-MX'))"></label>
+              <label>Nombre completo del paciente (nombres y apellidos) *<input id="patientFullName" maxlength="160" required autocomplete="name" placeholder="Nombre(s) y apellidos completos del paciente" oninput="this.value=this.value.toLocaleLowerCase('es-MX').replace(/(^|[\s'-])([\p{L}])/gu, (m, sep, ch) => sep + ch.toLocaleUpperCase('es-MX'))"></label>
               <label class="field-span-2">Dirección completa *<input id="address" maxlength="240" required autocomplete="street-address" placeholder="Calle, número, colonia y localidad"></label>
               <label>Número telefónico *<input id="phone" maxlength="40" type="tel" required autocomplete="tel" placeholder="Teléfono principal"></label>
               <label>Segundo número telefónico (opcional)<input id="phone2" maxlength="40" type="tel" placeholder="Teléfono alternativo"></label>
