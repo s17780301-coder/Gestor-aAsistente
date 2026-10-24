@@ -649,7 +649,7 @@ jobs:
           # Usar versionCodes claramente superiores a los de las compilaciones anteriores
           # para evitar que Android rechace la actualización como downgrade.
           version_updates = {
-              'gestor-app': (19, 1012),
+              'gestor-app': (19, 1013),
               'panel-apk': (9, 1007),
               'cobranza-app': (5, 2003),
               'registro-app': (5, 1007),
@@ -890,6 +890,20 @@ jobs:
             fi
             echo "OK $module: $meta"
             echo "OK firma estable compartida: $cert"
+            if [[ "$module" == "gestor-app" ]]; then
+              # Inspect the compiled APK resource, not just the editable source.
+              XMLTREE="$("$AAPT" dump xmltree "$apk" res/layout/activity_main.xml)"
+              if grep -Fq "Ver reporte de cobranza" <<< "$XMLTREE"; then
+                echo "::error::El APK final de Gestor todavía contiene el botón redundante 'Ver reporte de cobranza'."
+                exit 1
+              fi
+              if grep -Fq "btnReports" <<< "$XMLTREE"; then
+                echo "::error::El APK final de Gestor todavía contiene btnReports."
+                exit 1
+              fi
+              grep -Fq "Reportes" <<< "$XMLTREE" || { echo "::error::La tarjeta Reportes no aparece en el layout compilado."; exit 1; }
+              echo "OK APK Gestor: el botón redundante no está en el XML compilado y la tarjeta Reportes sí."
+            fi
           done
 
       - name: Reunir APKs con nombres claros y versión verificada
