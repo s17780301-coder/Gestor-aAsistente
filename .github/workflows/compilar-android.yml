@@ -788,7 +788,7 @@ jobs:
           layout = root / "gestor-app/src/main/res/layout/activity_main.xml"
           xml = layout.read_text(encoding="utf-8")
           # Remove only the redundant standalone report button; preserve the Reportes card.
-          xml2 = re.sub(r'(?s)<(?:Button|androidx\\.appcompat\\.widget\\.AppCompatButton)\\b(?:(?!</(?:Button|androidx\\.appcompat\\.widget\\.AppCompatButton)>).)*?(?:android:id=["\']@\\+id/btnReports["\']|android:text=["\']Ver reporte de cobranza["\'])(?:(?!</(?:Button|androidx\\.appcompat\\.widget\\.AppCompatButton)>).)*?</(?:Button|androidx\\.appcompat\\.widget\\.AppCompatButton)>', '', xml, count=1)
+          xml2 = re.sub(r'(?s)<([A-Za-z0-9_.]+)\\b(?=[^>]*(?:btnReports|Ver reporte de cobranza))[^>]*(?:/>|>.*?</\\1>)', '', xml, count=1)
           if xml2 == xml and ('btnReports' in xml or 'Ver reporte de cobranza' in xml):
               raise SystemExit("No se pudo quitar el botón redundante de reportes sin alterar otros controles.")
           layout.write_text(xml2, encoding="utf-8")
