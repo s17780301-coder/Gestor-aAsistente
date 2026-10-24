@@ -97,8 +97,18 @@ new_login = '''    private SharedPreferences sessionPrefs() { return context.get
     /** Returns only receipt rows visible to the signed-in Supabase account (RLS remains enforced). */
     public org.json.JSONArray fetchAccessibleReceiptHistory() throws Exception {
         String manager = managerId();
-        String path = "/rest/v1/collection_receipts?select=id,folio,patient_name,clinic,payment_amount,net_amount,concept,notes,created_at&order=created_at.desc&limit=1000";
-        org.json.JSONArray rows = requestArray("GET", path, null, ensureFreshAccessToken(false), null);
+        String path = "/rest/v1/collection_receipts?select=id,folio,patient_name,clinic,payment_amount,net_amount,concept,notes,created_at,manager_id&order=created_at.desc&limit=1000";
+        if (!manager.isEmpty()) path += "&manager_id=eq." + manager;
+        org.json.JSONArray rows;
+        try {
+            rows = requestArray("GET", path, null, ensureFreshAccessToken(false), null);
+        } catch (Exception first) {
+            String message = first.getMessage() == null ? "" : first.getMessage();
+            // Compatibilidad con esquemas anteriores donde aún no existía manager_id.
+            if (!message.contains("manager_id") && !message.contains("PGRST204") && !message.contains("42703")) throw first;
+            String fallback = "/rest/v1/collection_receipts?select=id,folio,patient_name,clinic,payment_amount,net_amount,concept,notes,created_at&order=created_at.desc&limit=1000";
+            rows = requestArray("GET", fallback, null, ensureFreshAccessToken(false), null);
+        }
         sessionPrefs().edit().putString(receiptCacheKey(), rows.toString()).putLong(receiptCacheKey() + "_at", System.currentTimeMillis()).apply();
         return rows;
     }
