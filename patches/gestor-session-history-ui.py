@@ -229,6 +229,31 @@ if 'if (oldVersion < 7) db.execSQL("ALTER TABLE pacientes ADD COLUMN address TEX
     if marker not in db:
         raise SystemExit("No se encontró el punto de migración SQLite para address; se cancela.")
     db = db.replace(marker, marker + '\n        if (oldVersion < 7) db.execSQL("ALTER TABLE pacientes ADD COLUMN address TEXT DEFAULT \'\'");', 1)
+# Make SQLite upgrades idempotent. The base source contains the payment_method
+# migration twice; on existing v5 databases this caused duplicate-column crash
+# during launch. Guard every new column addition and preserve all existing data.
+migration_block = '''        if (oldVersion < 6) db.execSQL("ALTER TABLE pacientes ADD COLUMN payment_method TEXT NOT NULL DEFAULT \\'efectivo\\'");
+        if (oldVersion < 7) db.execSQL("ALTER TABLE pacientes ADD COLUMN address TEXT DEFAULT \\'\\'");
+        if (oldVersion < 6) db.execSQL("ALTER TABLE pacientes ADD COLUMN payment_method TEXT NOT NULL DEFAULT \\'efectivo\\'");'''
+guarded_block = '''        if (oldVersion < 6 && !hasColumn(db, "pacientes", "payment_method")) db.execSQL("ALTER TABLE pacientes ADD COLUMN payment_method TEXT NOT NULL DEFAULT \\'efectivo\\'");
+        if (oldVersion < 7 && !hasColumn(db, "pacientes", "address")) db.execSQL("ALTER TABLE pacientes ADD COLUMN address TEXT DEFAULT \\'\\'");'''
+if migration_block in db:
+    db = db.replace(migration_block, guarded_block, 1)
+else:
+    # Fail closed if the expected SQLite upgrade sequence has drifted.
+    if 'if (oldVersion < 6) db.execSQL("ALTER TABLE pacientes ADD COLUMN payment_method TEXT NOT NULL DEFAULT \\'efectivo\\'");' in db:
+        raise SystemExit("La migración de payment_method no coincide con la secuencia esperada; se cancela.")
+if "private boolean hasColumn(SQLiteDatabase db, String table, String column)" not in db:
+    marker = "    @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {"
+    helper = '''    private boolean hasColumn(SQLiteDatabase db, String table, String column) {
+        try (Cursor c = db.rawQuery("PRAGMA table_info(" + table + ")", null)) {
+            while (c.moveToNext()) if (column.equalsIgnoreCase(c.getString(c.getColumnIndexOrThrow("name")))) return true;
+        }
+        return false;
+    }
+'''
+    if marker not in db: raise SystemExit("No se encontró onUpgrade para añadir comprobación segura de columnas.")
+    db = db.replace(marker, helper + marker, 1)
 if 'v.put("address", p.optString("address", ""));' not in db:
     marker = 'v.put("numero_poliza", p.optString("policy_number", "")); v.put("clinica", p.optString("clinic", ""));'
     if marker not in db:
