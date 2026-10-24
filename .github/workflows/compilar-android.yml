@@ -649,7 +649,7 @@ jobs:
           # Usar versionCodes claramente superiores a los de las compilaciones anteriores
           # para evitar que Android rechace la actualización como downgrade.
           version_updates = {
-              'gestor-app': (19, 1013),
+              'gestor-app': (19, 1014),
               'panel-apk': (9, 1007),
               'cobranza-app': (5, 2003),
               'registro-app': (5, 1007),
@@ -837,6 +837,9 @@ jobs:
           grep -q 'oldVersion < 6 && !hasColumn(db, "pacientes", "payment_method")' "$DB"
           grep -q 'oldVersion < 7 && !hasColumn(db, "pacientes", "address")' "$DB"
           test "$(grep -c 'ALTER TABLE pacientes ADD COLUMN payment_method' "$DB")" -eq 1
+          ! grep -Eq 'if \\(oldVersion < [0-9]+\\) db\\.execSQL\\("ALTER TABLE' "$DB"
+          grep -q 'oldVersion < 2 && !hasColumn(db, "pacientes", "quincenas")' "$DB"
+          grep -q 'oldVersion < 5 && !hasColumn(db, "pagos", "remote_id")' "$DB"
           ! grep -q 'TextToSpeech\|brandTts' "$MAIN"
           ! grep -q 'ACTION_GET_CONTENT\|ACTION_OPEN_DOCUMENT' "$MAIN"
           ! grep -q 'btnReports' "$LAYOUT"
