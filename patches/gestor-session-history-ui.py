@@ -407,9 +407,9 @@ new_reports = '''    private static final class ReceiptHistoryItem {
         android.widget.ListView list = new android.widget.ListView(this); list.setDivider(null); list.setDividerHeight(dp(8));
         TextView empty = txt("No hay registros para mostrar.",14,muted,false); empty.setGravity(android.view.Gravity.CENTER); empty.setPadding(dp(10),dp(20),dp(10),dp(20));
         root.addView(list,new android.widget.LinearLayout.LayoutParams(-1,Math.min(dp(300),(int)(getResources().getDisplayMetrics().heightPixels*.34f)))); root.addView(empty); list.setEmptyView(empty);
-        Button reload = miniButton("Actualizar histórico desde Supabase"); root.addView(reload);
+        Button reload = miniButton("Actualizar recibos de Cobranza"); root.addView(reload);
         ReceiptHistoryAdapter receiptAdapter = new ReceiptHistoryAdapter(receipts); PaymentHistoryAdapter paymentAdapter = new PaymentHistoryAdapter(payments);
-        final boolean[] receiptsSelected = {true};
+        final boolean[] receiptsSelected = {false};
         Runnable applyTab = () -> {
             receiptsTab.setTextColor(receiptsSelected[0] ? Color.WHITE : (dark ? Color.WHITE : Color.rgb(17,110,121)));
             receiptsTab.setBackgroundTintList(android.content.res.ColorStateList.valueOf(receiptsSelected[0] ? Color.rgb(12,139,145) : (dark ? Color.rgb(31,53,74) : Color.rgb(224,242,242))));
@@ -435,9 +435,9 @@ new_reports = '''    private static final class ReceiptHistoryItem {
             public void afterTextChanged(android.text.Editable e){}
         });
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Reporte de cobranza · histórico").setView(root).setNegativeButton("Cerrar",null).create();
-        reload.setOnClickListener(v->loadReceiptHistory(receiptAdapter,status));
+        reload.setOnClickListener(v->loadReceiptHistory(receiptAdapter,status,receiptsSelected));
         dialog.setOnShowListener(v->styleDialog(dialog)); dialog.show(); styleDialog(dialog); applyTab.run();
-        loadReceiptHistory(receiptAdapter,status);
+        loadReceiptHistory(receiptAdapter,status,receiptsSelected);
     }
 
     private java.util.ArrayList<PaymentHistoryItem> readPaymentHistory() {
@@ -452,15 +452,15 @@ new_reports = '''    private static final class ReceiptHistoryItem {
         return rows;
     }
 
-    private void loadReceiptHistory(ReceiptHistoryAdapter adapter, TextView status) {
-        if(!cloud.connected()){status.setText("Sin sesión de Supabase. Se conserva la caché disponible; conecta la cuenta en Ajustes para actualizar recibos.");return;}
-        status.setText("Consultando recibos de Cobranza con los permisos de la cuenta…");
+    private void loadReceiptHistory(ReceiptHistoryAdapter adapter, TextView status, boolean[] receiptsSelected) {
+        if(!cloud.connected()){if(receiptsSelected[0])status.setText("Sin sesión de Supabase. Se conserva la caché disponible; conecta la cuenta en Ajustes para actualizar recibos.");return;}
+        if(receiptsSelected[0])status.setText("Consultando recibos de Cobranza con los permisos de la cuenta…");
         new Thread(()->{
             String error=null; java.util.ArrayList<ReceiptHistoryItem> rows=new java.util.ArrayList<>();
             try { org.json.JSONArray data=cloud.fetchAccessibleReceiptHistory(); for(int i=0;i<data.length();i++){org.json.JSONObject r=data.optJSONObject(i);if(r==null)continue;rows.add(new ReceiptHistoryItem(r.optString("folio","(sin folio)"),r.optString("patient_name","Paciente"),r.optString("clinic",""),r.optString("concept","Abono"),r.optString("notes",""),r.optString("created_at",""),r.optDouble("payment_amount",0),r.optDouble("net_amount",r.optDouble("payment_amount",0))));} }
             catch(Exception ex){error=ex.getMessage()==null?"No se pudo consultar el historial.":ex.getMessage();}
             final String result=error; final java.util.ArrayList<ReceiptHistoryItem> loaded=rows;
-            runOnUiThread(()->{if(isFinishing())return;if(result==null){adapter.setItems(loaded);status.setText(loaded.size()+" recibos accesibles desde Supabase · actualizado "+formatTimestamp(System.currentTimeMillis()));}else{status.setText("No se pudieron actualizar los recibos: "+result+". Se conserva la información disponible en caché.");}});
+            runOnUiThread(()->{if(isFinishing())return;if(result==null){adapter.setItems(loaded);if(receiptsSelected[0])status.setText(loaded.size()+" recibos accesibles desde Supabase · actualizado "+formatTimestamp(System.currentTimeMillis()));}else if(receiptsSelected[0]){status.setText("No se pudieron actualizar los recibos: "+result+". Se conserva la información disponible en caché.");}});
         }).start();
     }
 
