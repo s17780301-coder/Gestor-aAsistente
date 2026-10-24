@@ -2,7 +2,7 @@ name: Compilar APKs DENTAL JG desde ZIP
 
 on:
   push:
-    branches: [main, dental-jg-session-ui]
+    branches: [main]
     paths:
       - '*.zip'
       - '**/*.zip'
@@ -649,7 +649,7 @@ jobs:
           # Usar versionCodes claramente superiores a los de las compilaciones anteriores
           # para evitar que Android rechace la actualización como downgrade.
           version_updates = {
-              'gestor-app': (19, 1007),
+              'gestor-app': (19, 1008),
               'panel-apk': (9, 1007),
               'cobranza-app': (5, 2003),
               'registro-app': (5, 1007),
