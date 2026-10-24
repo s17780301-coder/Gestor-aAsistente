@@ -649,7 +649,7 @@ jobs:
           # Usar versionCodes claramente superiores a los de las compilaciones anteriores
           # para evitar que Android rechace la actualización como downgrade.
           version_updates = {
-              'gestor-app': (19, 1011),
+              'gestor-app': (19, 1012),
               'panel-apk': (9, 1007),
               'cobranza-app': (5, 2003),
               'registro-app': (5, 1007),
