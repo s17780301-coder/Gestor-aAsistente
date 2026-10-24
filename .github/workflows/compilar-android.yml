@@ -837,7 +837,7 @@ jobs:
           grep -q 'oldVersion < 6 && !hasColumn(db, "pacientes", "payment_method")' "$DB"
           grep -q 'oldVersion < 7 && !hasColumn(db, "pacientes", "address")' "$DB"
           test "$(grep -c 'ALTER TABLE pacientes ADD COLUMN payment_method' "$DB")" -eq 1
-          ! grep -Eq 'if \\(oldVersion < [0-9]+\\) db\\.execSQL\\("ALTER TABLE' "$DB"
+          ! grep -Eq 'if \(oldVersion < [0-9]+\) db\.execSQL\("ALTER TABLE' "$DB"
           grep -q 'oldVersion < 2 && !hasColumn(db, "pacientes", "quincenas")' "$DB"
           grep -q 'oldVersion < 5 && !hasColumn(db, "pagos", "remote_id")' "$DB"
           ! grep -q 'TextToSpeech\|brandTts' "$MAIN"
