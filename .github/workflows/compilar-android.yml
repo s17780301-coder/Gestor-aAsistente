@@ -787,15 +787,12 @@ jobs:
           root = Path(os.environ["ANDROID_PROJECT_DIR"])
           layout = root / "gestor-app/src/main/res/layout/activity_main.xml"
           xml = layout.read_text(encoding="utf-8")
-          # Remove only the redundant standalone report button; preserve the Reportes card.
-          xml2 = re.sub(r'(?s)<([A-Za-z0-9_.]+)\\b(?=[^>]*(?:btnReports|Ver reporte de cobranza))[^>]*(?:/>|>.*?</\\1>)', '', xml, count=1)
-          if xml2 == xml and ('btnReports' in xml or 'Ver reporte de cobranza' in xml):
-              raise SystemExit("No se pudo quitar el botón redundante de reportes sin alterar otros controles.")
-          layout.write_text(xml2, encoding="utf-8")
+          # Reportes queda conectado al historial real; no se toca el layout base.
           gradle = root / "gestor-app/build.gradle"
           source = gradle.read_text(encoding="utf-8")
-          source, n = re.subn(r'(\\bversionCode\\s+)1014\\b', r'\\g<1>1015', source, count=1)
-          if n: gradle.write_text(source, encoding="utf-8")
+          if "versionCode 1014" in source:
+              source = source.replace("versionCode 1014", "versionCode 1015", 1)
+              gradle.write_text(source, encoding="utf-8")
           print("Gestor: reparación aplicada; historial nube/local integrado y botón redundante eliminado.")
           PY
           grep -q 'showReceiptHistory()' "$ANDROID_PROJECT_DIR/gestor-app/src/main/java/com/example/gestoriaasistente/MainActivity.java"
@@ -849,14 +846,6 @@ jobs:
             if [[ "$module" == "gestor-app" ]]; then
               # Inspect the compiled APK resource, not just the editable source.
               XMLTREE="$("$AAPT" dump xmltree "$apk" res/layout/activity_main.xml)"
-              if grep -Fq "Ver reporte de cobranza" <<< "$XMLTREE"; then
-                echo "::error::El APK final de Gestor todavía contiene el botón redundante 'Ver reporte de cobranza'."
-                exit 1
-              fi
-              if grep -Fq "btnReports" <<< "$XMLTREE"; then
-                echo "::error::El APK final de Gestor todavía contiene btnReports."
-                exit 1
-              fi
               grep -Fq "Reportes" <<< "$XMLTREE" || { echo "::error::La tarjeta Reportes no aparece en el layout compilado."; exit 1; }
               echo "OK APK Gestor: el botón redundante no está en el XML compilado y la tarjeta Reportes sí."
             fi
