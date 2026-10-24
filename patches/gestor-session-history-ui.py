@@ -464,7 +464,80 @@ main = main.replace(old_choose_patient, new_choose_patient, 1)
 # ---------------------------------------------------------------------------
 old_reports = '''    private void showReports(){Cursor c=db.all();StringBuilder s=new StringBuilder("Resumen de cobranza\\n\\nTotal cobrado: ").append(money(db.sumQuincenal())).append("\\nPagos registrados: ").append(money(db.sumPaid())).append("\\nPacientes registrados: ").append(db.count()).append("\\n\\nCuentas pendientes:\\n");int n=0;while(c.moveToNext()){double balance=c.getDouble(6);if(balance>0){n++;s.append("• ").append(c.getString(1)).append(" — ").append(money(balance)).append("; pago quincenal ").append(money(c.getDouble(8))).append("\\n");}}c.close();if(n==0)s.append("No hay saldos pendientes.");new AlertDialog.Builder(this).setTitle("Reporte de cobranza").setMessage(s.toString()).setPositiveButton("Cerrar",null).show();}
 '''
-new_reports = '''    private void showReports(){Cursor c=db.all();StringBuilder s=new StringBuilder("Resumen de cobranza\\n\\nTotal cobrado: ").append(money(db.sumQuincenal())).append("\\nPagos registrados: ").append(money(db.sumPaid())).append("\\nPacientes registrados: ").append(db.count()).append("\\n\\nCuentas pendientes:\\n");int n=0;while(c.moveToNext()){double balance=c.getDouble(6);if(balance>0){n++;s.append("• ").append(c.getString(1)).append(" — ").append(money(balance)).append("; pago quincenal ").append(money(c.getDouble(8))).append("\\n");}}c.close();if(n==0)s.append("No hay saldos pendientes.");new AlertDialog.Builder(this).setTitle("Reporte de cobranza").setMessage(s.toString()).setPositiveButton("Cerrar",null).show();}
+new_reports = '''    private void showReports() {
+        final String[] options = {"Recibos emitidos (nube)", "Pagos registrados (este dispositivo)"};
+        new AlertDialog.Builder(this).setTitle("Reportes de Gestor")
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) showReceiptHistory();
+                    else showLocalPaymentHistory();
+                }).setNegativeButton("Cerrar", null).show();
+    }
+
+    private void showReceiptHistory() {
+        final android.app.ProgressDialog progress = new android.app.ProgressDialog(this);
+        progress.setMessage("Consultando recibos...");
+        progress.setCancelable(false);
+        progress.show();
+        new Thread(() -> {
+            String message;
+            try {
+                org.json.JSONArray rows = new SupabaseSync(getApplicationContext()).fetchAccessibleReceiptHistory();
+                StringBuilder out = new StringBuilder("Recibos visibles para esta cuenta: ").append(rows.length()).append("\\n\\n");
+                for (int i = 0; i < rows.length(); i++) {
+                    org.json.JSONObject row = rows.optJSONObject(i);
+                    if (row == null) continue;
+                    out.append("Folio: ").append(row.optString("folio", "—"))
+                       .append("\\nCliente: ").append(row.optString("patient_name", "—"))
+                       .append("\\nClínica: ").append(row.optString("clinic", "—"))
+                       .append("\\nImporte: ").append(money(row.optDouble("payment_amount", row.optDouble("net_amount", 0d))))
+                       .append("\\nFecha: ").append(row.optString("created_at", "—"))
+                       .append("\\nConcepto: ").append(row.optString("concept", row.optString("notes", "—")))
+                       .append("\\n\\n");
+                }
+                if (rows.length() == 0) out.append("Supabase no devolvió recibos visibles para esta cuenta.");
+                message = out.toString();
+            } catch (Exception ex) {
+                message = "No se pudieron consultar los recibos en la nube.\\n\\n" +
+                        (ex.getMessage() == null ? "Comprueba tu conexión y los permisos de la cuenta." : ex.getMessage()) +
+                        "\\n\\nSe conserva el historial local en la opción anterior.";
+            }
+            final String result = message;
+            runOnUiThread(() -> {
+                if (progress.isShowing()) progress.dismiss();
+                android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+                android.widget.TextView body = new android.widget.TextView(this);
+                body.setText(result); body.setTextSize(15); body.setPadding(dp(18), dp(14), dp(18), dp(14));
+                scroll.addView(body);
+                new AlertDialog.Builder(this).setTitle("Historial de recibos").setView(scroll)
+                        .setPositiveButton("Cerrar", null).show();
+            });
+        }, "dentaljg-reportes-recibos").start();
+    }
+
+    private void showLocalPaymentHistory() {
+        Cursor c = db.allPayments();
+        StringBuilder out = new StringBuilder("Pagos registrados en este dispositivo\\n\\n");
+        int count = 0;
+        try {
+            while (c.moveToNext()) {
+                count++;
+                out.append("Cliente: ").append(c.getString(2))
+                   .append("\\nClínica: ").append(c.getString(3))
+                   .append("\\nPóliza: ").append(c.getString(4))
+                   .append("\\nImporte: ").append(money(c.getDouble(5)))
+                   .append("\\nFecha: ").append(c.getString(6))
+                   .append("\\nNota: ").append(c.getString(7))
+                   .append("\\n\\n");
+            }
+        } finally { c.close(); }
+        if (count == 0) out.append("No hay pagos guardados localmente en este dispositivo.");
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        android.widget.TextView body = new android.widget.TextView(this);
+        body.setText(out.toString()); body.setTextSize(15); body.setPadding(dp(18), dp(14), dp(18), dp(14));
+        scroll.addView(body);
+        new AlertDialog.Builder(this).setTitle("Historial de pagos").setView(scroll)
+                .setPositiveButton("Cerrar", null).show();
+    }
 '''
 if old_reports not in main:
     raise SystemExit("No se encontró el reporte original esperado en MainActivity.java; no se modificó la fuente.")
@@ -473,7 +546,7 @@ main = main.replace(old_reports, new_reports, 1)
 # Confirm no startup speech remains, and make sure the new paths are wired in.
 if 'TextToSpeech' in main or 'brandTts' in main:
     raise SystemExit("Quedó una referencia a la voz de inicio; se cancela la compilación.")
-for marker in ('showPatientSelector(', 'private void showReports()', 'db.sumRecordedPayments()', 'ACTION_DIAL', 'https://wa.me/'):
+for marker in ('showPatientSelector(', 'private void showReports()', 'showReceiptHistory()', 'fetchAccessibleReceiptHistory()', 'showLocalPaymentHistory()', 'db.sumRecordedPayments()', 'ACTION_DIAL', 'https://wa.me/'):
     if marker not in main:
         raise SystemExit("No se encontró la mejora requerida en MainActivity.java: " + marker)
 if 'public Cursor selectablePatients(' not in db or 'public Cursor allPayments()' not in db:
