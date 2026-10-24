@@ -8,6 +8,7 @@ on:
       - '**/*.zip'
       - '.github/workflows/compilar-android.yml'
       - 'patches/**'
+      - 'fixes/**'
   workflow_dispatch:
 
 permissions:
@@ -737,6 +738,41 @@ jobs:
           PY
           node --check "$ANDROID_PROJECT_DIR/cobranza-app/src/main/assets/app.js"
           echo "Sintaxis JS de Cobranza verificada antes de compilar."
+
+      - name: Aplicar correcciones precisas de Cobranza (carteras automáticas y recibos adicionales)
+        if: steps.project.outputs.mode == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$ANDROID_PROJECT_DIR"
+          cp fixes/cobranza/app.js "$ROOT/cobranza-app/src/main/assets/app.js"
+          cp fixes/cobranza/index.html "$ROOT/cobranza-app/src/main/assets/index.html"
+          node --check "$ROOT/cobranza-app/src/main/assets/app.js"
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ["ANDROID_PROJECT_DIR"]) / "cobranza-app" / "src" / "main" / "assets"
+          js = (root / "app.js").read_text(encoding="utf-8")
+          html = (root / "index.html").read_text(encoding="utf-8")
+          required_js = ["assigned_manager_id", "function generatePortfolios(automatic=false)", "function openExtraReceipts()", "async function createExtraReceipts()", "create_scheduled_collection_receipt"]
+          required_html = ['id="generateExtraReceipts"', 'id="extraReceiptsDialog"', "Generar recibos de más", "Versión 1.0"]
+          for marker in required_js:
+              if marker not in js:
+                  raise SystemExit("Falta en Cobranza la función requerida: " + marker)
+          for marker in required_html:
+              if marker not in html:
+                  raise SystemExit("Falta en Cobranza la interfaz requerida: " + marker)
+          if any(marker in js + html for marker in ["portfolioAssignmentRows", "renderPortfolioAssignments", "data-save-portfolio", "Guardar asignación"]):
+              raise SystemExit("Cobranza aún contiene la interfaz de asignación manual de carteras.")
+          a = js.find("async function createExtraReceipts(){")
+          b = js.find("async function generatePortfolioReceipts(", a)
+          extra = js[a:b] if a >= 0 and b > a else ""
+          if not extra or "db.rpc('create_scheduled_collection_receipt'" not in extra:
+              raise SystemExit("La generación adicional no usa la rutina de recibos programados.")
+          if "db.from('payments').insert" in extra or "db.from('patients').update" in extra or "db.from('patients').upsert" in extra:
+              raise SystemExit("La función de recibos adicionales modifica pagos o saldos del paciente.")
+          print("OK Cobranza: gestor derivado del registro; carteras automáticas; recibos adicionales programados sin registrar pagos.")
+          PY
 
       - name: Compilar todos los módulos Android
         if: steps.project.outputs.mode == 'source'
