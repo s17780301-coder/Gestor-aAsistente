@@ -434,11 +434,11 @@ main = main.replace(old_reports, new_reports, 1)
 # Confirm no startup speech remains, and make sure the new paths are wired in.
 if 'TextToSpeech' in main or 'brandTts' in main:
     raise SystemExit("Quedó una referencia a la voz de inicio; se cancela la compilación.")
-for marker in ('showPatientSelector(', 'class ReceiptHistoryAdapter', 'class PaymentHistoryAdapter', 'loadReceiptHistory(', 'db.sumRecordedPayments()', 'ACTION_DIAL', 'https://wa.me/'):
+for marker in ('showPatientSelector(', 'private void showReports()', 'db.sumRecordedPayments()', 'ACTION_DIAL', 'https://wa.me/'):
     if marker not in main:
         raise SystemExit("No se encontró la mejora requerida en MainActivity.java: " + marker)
 if 'public Cursor selectablePatients(' not in db or 'public Cursor allPayments()' not in db:
     raise SystemExit("Faltan consultas locales de pacientes o historial en CustomerDbHelper.java.")
 main_path.write_text(main, encoding="utf-8")
 
-print("Gestor: renovación de sesión, selector moderno con búsqueda, historial de recibos/pagos y voz de inicio eliminada.")
+print("Gestor: renovación de sesión, selector moderno con búsqueda, reporte nativo estable y voz de inicio eliminada.")
