@@ -255,17 +255,17 @@ if "private boolean hasColumn(SQLiteDatabase db, String table, String column)" n
     db = db.replace(marker, helper + marker, 1)
 
 # Older installations can contain partially migrated schemas from previous
-# builds. Make every remaining ALTER TABLE ADD COLUMN in onUpgrade idempotent,
-# not just the two newest columns, so upgrading never crashes on duplicate columns.
+# builds. Guard every ALTER TABLE ADD COLUMN, including statements nested inside
+# a version block, so old databases never fail on duplicate columns.
 alter_pattern = re.compile(
-    r'(?m)^(\s*)if \(oldVersion < (\d+)\) db\.execSQL\("ALTER TABLE ([A-Za-z_][A-Za-z0-9_]*) ADD COLUMN ([A-Za-z_][A-Za-z0-9_]*) ([^"]*)"\);$'
+    r'(?m)^(\s*)db\.execSQL\("ALTER TABLE ([A-Za-z_][A-Za-z0-9_]*) ADD COLUMN ([A-Za-z_][A-Za-z0-9_]*) ([^"]*)"\);$'
 )
 def guard_legacy_alter(match):
-    indent, version, table, column, definition = match.groups()
-    return (f'{indent}if (oldVersion < {version} && !hasColumn(db, "{table}", "{column}")) '
+    indent, table, column, definition = match.groups()
+    return (f'{indent}if (!hasColumn(db, "{table}", "{column}")) '
             f'db.execSQL("ALTER TABLE {table} ADD COLUMN {column} {definition}");')
 db = alter_pattern.sub(guard_legacy_alter, db)
-if re.search(r'(?m)^\s*if \(oldVersion < \d+\) db\.execSQL\("ALTER TABLE', db):
+if re.search(r'(?m)^\s*db\.execSQL\("ALTER TABLE [^"]* ADD COLUMN', db):
     raise SystemExit("Quedó una migración ALTER TABLE sin protección; se cancela.")
 
 if 'v.put("address", p.optString("address", ""));' not in db:
